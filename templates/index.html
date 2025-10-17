@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expenzo - Take Control of Your Finances</title>
+  <link rel="stylesheet" href="static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+  <div class="nav-left">
+    <img src="{{ url_for('static', filename='assets/ExpenzoLogo.png') }}" alt="Expenzo Logo" class="logo-img">
+    <span class="brand-name">Expenzo</span>
+  </div>
+
+  <nav class="nav-center">
+    <a href="#hero">Home</a>
+    <a href="#about">About</a>
+    <a href="#features">Services</a>
+    <a href="dashboard.html">Dashboard</a>
+  </nav>
+
+  <div class="nav-right">
+    <a href="login.html" class="btn get-started">Get Started</a>
+  </div>
+  </header>
+
+  <!-- Hero Section -->
+<section class="hero">
+  <div class="hero-text">
+    <h2 class="welcome">Welcome to <span>Expenzo</span></h2>
+    <h1>Take Control of Your Financial Future</h1>
+    <p class="tagline">Your all-in-one smart finance dashboard — track, plan, and grow effortlessly.</p>
+    
+    <ul class="hero-highlights">
+      <li>✅ Real-time Expense Tracking</li>
+      <li>💡 Smart Budget Recommendations</li>
+      <li>📊 Interactive Insights & Charts</li>
+    </ul>
+
+    <div class="hero-buttons">
+      <a href="login.html" class="btn primary">Get Started</a>
+      <button class="btn secondary">Explore Features</button>
+    </div>
+  </div>
+
+  <div class="hero-image">
+    <img src="../assets/example img.jpg" alt="App Mockup" />
+  </div>
+</section>
+
+
+  <!-- Features Section -->
+<section id="features" class="features">
+  <h2>Powerful Features to Take Control of Your Finances</h2>
+  
+  <div class="feature-grid">
+    <div class="feature-card">
+      <i class="fa-solid fa-wallet feature-icon"></i>
+      <h3>Expense Tracking</h3>
+      <p>Monitor where your money goes with real-time expense categorization.</p>
+    </div>
+
+    <div class="feature-card">
+      <i class="fa-solid fa-chart-line feature-icon"></i>
+      <h3>Budget Planning</h3>
+      <p>Create personalized budgets and stay on track effortlessly.</p>
+    </div>
+
+    <div class="feature-card">
+      <i class="fa-solid fa-repeat feature-icon"></i>
+      <h3>Subscription Tracker</h3>
+      <p>Track all your active subscriptions and cancel unused ones easily.</p>
+    </div>
+
+    <div class="feature-card">
+      <i class="fa-solid fa-bullseye feature-icon"></i>
+      <h3>Goal-Based Savings</h3>
+      <p>Set saving goals and visualize your progress towards them.</p>
+    </div>
+  </div>
+
+  <div class="explore-btn">
+    <a href="features.html" class="btn primary">Explore More Features →</a>
+  </div>
+</section>
+
+  <!-- Pricing Section -->
+  <section class="pricing">
+    <h2>Transparent Pricing for Everyone</h2>
+    <div class="pricing-grid">
+      <div class="plan">
+        <h3>Basic</h3>
+        <p>$0 / month</p>
+        <ul>
+          <li>Up to 2 bank accounts</li>
+          <li>Basic expense tracking</li>
+          <li>Email support</li>
+        </ul>
+        <button class="btn">Get Started</button>
+      </div>
+      <div class="plan recommended">
+        <h3>Pro <span>(Recommended)</span></h3>
+        <p>$19 / month</p>
+        <ul>
+          <li>Unlimited accounts</li>
+          <li>Smart budget alerts</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="btn primary">Upgrade Now</button>
+      </div>
+      <div class="plan">
+        <h3>Business</h3>
+        <p>$49 / month</p>
+        <ul>
+          <li>Team access</li>
+          <li>Custom financial reports</li>
+          <li>Dedicated manager</li>
+        </ul>
+        <button class="btn">Get Started</button>
+      </div>
+    </div>
+  </section>
+
+  
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-links">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Careers</a>
+        <a href="#">Blog</a>
+      </div>
+      <div class="footer-links">
+        <h4>Support</h4>
+        <a href="#">Help Center</a>
+        <a href="#">Contact Us</a>
+        <a href="#">Privacy Policy</a>
+      </div>
+      <div class="footer-links">
+        <h4>Follow Us</h4>
+        <a href="#">Twitter</a>
+        <a href="#">Facebook</a>
+        <a href="#">LinkedIn</a>
+      </div>
+    </div>
+    <p>© 2025 Expenzo. All Rights Reserved.</p>
+  </footer>
+
+  <script src="static/script.js"></script>
+</body>
+</html>
