@@ -13,19 +13,19 @@
   <!-- Navbar -->
   <header class="navbar">
   <div class="nav-left">
-    <img src="{{ url_for('static', filename='assets/ExpenzoLogo.png') }}" alt="Expenzo Logo" class="logo-img">
-    <span class="brand-name">Expenzo</span>
+    <img src="{{ url_for('static', filename='assets/expenzologo (2).png') }}" alt="Expenzo Logo" class="logo-img">
+    <!-- <span class="logo-text">Expenzo</span> -->
   </div>
 
   <nav class="nav-center">
     <a href="#hero">Home</a>
     <a href="#about">About</a>
     <a href="#features">Services</a>
-    <a href="dashboard.html">Dashboard</a>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
   </nav>
 
   <div class="nav-right">
-    <a href="login.html" class="btn get-started">Get Started</a>
+    <a href="{{ url_for('login') }}" class="btn get-started">Get Started →</a>
   </div>
   </header>
 
@@ -43,16 +43,20 @@
     </ul>
 
     <div class="hero-buttons">
-      <a href="login.html" class="btn primary">Get Started</a>
-      <button class="btn secondary">Explore Features</button>
+      <a href="{{ url_for('login') }}" class="btn primary">Get Started →</a>
+      <a href="#features" class="btn secondary">Explore Features →</a>
     </div>
   </div>
 
   <div class="hero-image">
-    <img src="../assets/example img.jpg" alt="App Mockup" />
+    <img src="{{ url_for('static', filename='assets/exampleimg.png') }}" alt="App Mockup" />
+  </div>
+  <div class="scroll-down">
+    <a href="#features">
+      <i class="fas fa-chevron-down"></i>
+    </a>
   </div>
 </section>
-
 
   <!-- Features Section -->
 <section id="features" class="features">
@@ -85,7 +89,57 @@
   </div>
 
   <div class="explore-btn">
-    <a href="features.html" class="btn primary">Explore More Features →</a>
+    <a href="{{ url_for('features') }}" class="btn primary">Explore More Features →</a>
+  </div>
+</section>
+
+  <!-- How It Works Section -->
+<section id="how-it-works" class="how-it-works">
+  <h2>How It Works</h2>
+  <div class="steps">
+    <div class="step">
+      <i class="fas fa-user-plus step-icon"></i>
+      <h3>1. Sign Up</h3>
+      <p>Create your free Expenzo account and set up your profile in minutes.</p>
+    </div>
+    <div class="step">
+      <i class="fas fa-link step-icon"></i>
+      <h3>2. Connect Accounts</h3>
+      <p>Securely connect your bank or manually add transactions easily.</p>
+    </div>
+    <div class="step">
+      <i class="fas fa-chart-pie step-icon"></i>
+      <h3>3. Track & Analyze</h3>
+      <p>View your spending insights through interactive graphs and charts.</p>
+    </div>
+    <div class="step">
+      <i class="fas fa-bullseye step-icon"></i>
+      <h3>4. Achieve Goals</h3>
+      <p>Set financial goals and let Expenzo guide you to success.</p>
+    </div>
+  </div>
+</section>
+
+<!-- About Section -->
+<section id="about" class="about">
+  <div class="about-content">
+    <div class="about-text">
+      <h2>About Expenzo</h2>
+      <p>
+        Expenzo is your all-in-one financial control center designed to help you
+        take charge of your money effortlessly. Our mission is to simplify personal
+        finance by combining expense tracking, budgeting, and smart insights — 
+        all in one beautifully designed dashboard.
+      </p>
+      <p>
+        Whether you're managing daily expenses or planning long-term goals,
+        Expenzo helps you stay organized, mindful, and financially confident.
+      </p>
+      <a href="#features" class="btn secondary">Explore Our Features</a>
+    </div>
+    <div class="about-image">
+      <img src="../assets/about-illustration.png" alt="About Expenzo" />
+    </div>
   </div>
 </section>
 
