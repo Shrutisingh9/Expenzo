@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <title>Register - Expenzo</title>
   <link rel="stylesheet" href="static/style.css">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 </head>
 <body>
   <div class="auth-wrapper">
     <!-- Left Side -->
     <div class="auth-left">
-      <h1>Hello Expenzo! 👋</h1>
+      <h1>Welcome to Expenzo! 💸</h1>
       <p>Create your account and start managing your finances effortlessly!</p>
       <span>© 2025 Expenzo. All rights reserved.</span>
     </div>
@@ -23,13 +24,25 @@
           <input type="email" placeholder="Email" required>
           <input type="password" placeholder="Password" required>
           <input type="text" placeholder="Phone Number" required>
-          <input type="date" placeholder="Date of Birth" required>
+          <input type="date" required>
           <button type="submit">Register</button>
         </form>
-        <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+
+        <div class="divider">
+          <span>or sign up with</span>
+        </div>
+
+        <div class="social-login">
+          <a href="#" class="social-icon"><i class='bx bxl-google'></i></a>
+          <a href="#" class="social-icon"><i class='bx bxl-facebook'></i></a>
+          <a href="#" class="social-icon"><i class='bx bxl-github'></i></a>
+        </div>
+
+        <p class="register-link">Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
       </div>
     </div>
   </div>
+
 <script src="static/script.js"></script>
 </body>
 </html>

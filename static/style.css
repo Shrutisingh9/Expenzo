@@ -35,7 +35,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 100;
-  height: 40px;
+  margin-bottom: 0; 
 }
 
 .nav-left {
@@ -148,12 +148,12 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: 100px 100px;
-  flex-wrap: wrap;
+  /* flex-wrap: wrap; */
   background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%);
   min-height: 50vh;
-  border-radius: 40px;
-  margin: 80px auto;
-  width: 90%;
+  border-radius: 0 0 20px 20px;
+  margin: 0;
+  width: 100%;
   max-width: 1300px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -809,110 +809,273 @@ a {
   background: #0097a7;
 }
 
-/* Reset */
-
+/* login */
+/* --------- Auth Layout --------- */
 .auth-wrapper {
   display: flex;
   height: 100vh;
+  background: linear-gradient(135deg,#c7f2f4, #eafcff);
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  position: relative;
+  font-family: 'Poppins', sans-serif;
 }
 
-/* Left Side */
+/* --------- Left Side --------- */
 .auth-left {
   flex: 1;
-  background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+  background: linear-gradient(135deg,#5ed5e1, #37b0c6);
   color: #fff;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 60px;
   text-align: center;
+  border-radius: 40px 0 0 40px;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
 }
 
 .auth-left h1 {
-  font-size: 2.5rem;
+  font-size: 3rem;
+  font-weight: 600;
   margin-bottom: 20px;
 }
 
 .auth-left p {
   font-size: 1.2rem;
+  max-width: 450px;
+  line-height: 1.6;
   margin-bottom: 40px;
+  opacity: 0.9;
 }
 
 .auth-left span {
-  font-size: 0.9rem;
-  opacity: 0.7;
+  font-size: 0.85rem;
+  opacity: 0.8;
 }
 
-/* Right Side */
+/* --------- Right Side --------- */
 .auth-right {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f9fafb;
 }
 
+/* --------- Card --------- */
 .auth-card {
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  padding: 40px 30px;
-  border-radius: 15px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  max-width: 420px;
+  background: #ffffff;
+  padding: 45px 40px;
+  border-radius: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.auth-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
 }
 
 .auth-card h2 {
-  font-size: 1.8rem;
+  font-size: 2rem;
+  color: #0b344d;
   margin-bottom: 15px;
+  text-align: center;
 }
 
 .auth-card p {
   font-size: 0.95rem;
-  margin-bottom: 20px;
-  color: #4b5563;
+  margin-bottom: 25px;
+  color: #475569;
+  text-align: center;
 }
 
 .auth-card p a {
-  color: #3b82f6;
+  color: #0ea5e9;
   text-decoration: none;
+  font-weight: 500;
 }
 
+.auth-card p a:hover {
+  text-decoration: underline;
+}
+
+/* --------- Input Fields --------- */
 .auth-card input {
   width: 100%;
-  padding: 12px 15px;
-  margin-bottom: 15px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+  box-sizing: border-box;
 }
 
+.auth-card input::placeholder {
+  color: #cbd5e1;
+}
+
+.auth-card input:focus {
+  border-color: #06b6d4;
+  outline: none;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.3);
+}
+
+/* --------- Buttons --------- */
 .auth-card button {
   width: 100%;
   padding: 12px;
   margin-top: 10px;
   border: none;
-  border-radius: 8px;
-  background: #3b82f6;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
   color: #fff;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .auth-card button:hover {
-  background: #1e40af;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  transform: translateY(-2px);
 }
 
 .google-login {
-  background: #fff;
-  color: #000;
-  border: 1px solid #d1d5db;
-  margin-top: 10px;
+  background: #ffffff;
+  color: #374151;
+  border: 1.5px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 500;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
+.google-login img {
+  width: 22px;
+  height: 22px;
+}
+
+.google-login:hover {
+  background: #f8fafc;
+  border-color: #d1d5db;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* --------- Forgot Password --------- */
 .forgot-password {
   font-size: 0.85rem;
   text-align: center;
-  margin-top: 10px;
+  margin-top: 8px;
+  margin-bottom: 6px; 
+  color: #475569;
+
+}
+
+.forgot-password a {
+  color: #0ea5e9;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
+/* --------- Responsive --------- */
+@media (max-width: 900px) {
+  .auth-wrapper {
+    flex-direction: column;
+  }
+  .auth-left {
+    border-radius: 0 0 40px 40px;
+    padding: 30px;
+  }
+  .auth-right {
+    padding: 30px 10px;
+  }
+}
+
+/* --------- Divider --------- */
+.divider {
+  text-align: center;
+  position: relative;
+  margin: 25px 0 15px;
+}
+.divider span {
+  background: #fff;
+  color: #64748b;
+  padding: 0 10px;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 1;
+}
+.divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 1px;
+  width: 100%;
+  background: #e2e8f0;
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+/* --------- Social Icons --------- */
+.social-login {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.social-icon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.social-icon:hover {
+  background: #06b6d4;
+  color: #fff;
+  transform: translateY(-3px);
+}
+
+/* --------- Register Text --------- */
+.register-link {
+  text-align: center;
+  margin-top: 5px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.register-link a {
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
 }

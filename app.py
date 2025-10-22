@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
 from datetime import datetime
@@ -7,8 +7,9 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = "supersecretkey"
 bcrypt = Bcrypt(app)
 
-# ===== MongoDB Setup =====
-client = MongoClient("mongodb://localhost:27017/")
+# ===== MongoDB Atlas Setup =====
+MONGO_URI = "mongodb+srv://tanukumss784_db_user:grqXrrFhic8IhQzL@cluster0.df53h7a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client = MongoClient(MONGO_URI)
 db = client["expenzo_db"]
 
 users_col = db["users"]
@@ -22,47 +23,53 @@ subscriptions_col = db["subscriptions"]
 def index():
     return render_template('index.html')
 
+# ===== LOGIN =====
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
+
         user = users_col.find_one({'email': email})
         if user and bcrypt.check_password_hash(user['password'], password):
             session['user_id'] = str(user['_id'])
             session['name'] = user['name']
             return redirect(url_for('dashboard'))
-        return "Invalid credentials"
+        else:
+            return render_template('login.html', error="Invalid email or password!")
+
     return render_template('login.html')
 
+# ===== REGISTER =====
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # Get form data
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
         phone = request.form['phone']
         dob = request.form['dob']
 
-        # Check if user already exists
         existing_user = users_col.find_one({'email': email})
         if existing_user:
-            return "User already exists with this email!"
+            return render_template('register.html', error="User already exists with this email!")
 
-        # Insert into database
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
         users_col.insert_one({
             'name': name,
             'email': email,
-            'password': password,   # ⚠️ later you should hash this with bcrypt
+            'password': hashed_password,
             'phone': phone,
-            'dob': dob
+            'dob': dob,
+            'created_at': datetime.utcnow()
         })
 
         return redirect(url_for('login'))
 
     return render_template('register.html')
 
+# ===== DASHBOARD =====
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -71,29 +78,38 @@ def dashboard():
     user_id = session['user_id']
     name = session['name']
 
-    cards = list(cards_col.find({'user_id': user_id}))
+    # Dummy example: you can insert sample data manually for testing
     transactions = list(transactions_col.find({'user_id': user_id}))
+    cards = list(cards_col.find({'user_id': user_id}))
     subscriptions = list(subscriptions_col.find({'user_id': user_id}))
 
-    total_income = sum([float(t['amount']) for t in transactions if t['type'] == 'income'])
-    total_expense = sum([float(t['amount']) for t in transactions if t['type'] == 'expense'])
+    total_income = sum([float(t.get('amount', 0)) for t in transactions if t.get('type') == 'income'])
+    total_expense = sum([float(t.get('amount', 0)) for t in transactions if t.get('type') == 'expense'])
 
-    return render_template('dashboard.html',
-                           name=name,
-                           cards=cards,
-                           transactions=transactions,
-                           subscriptions=subscriptions,
-                           total_income=total_income,
-                           total_expense=total_expense)
+    balance = total_income - total_expense
 
+    return render_template(
+        'dashboard.html',
+        name=name,
+        transactions=transactions,
+        cards=cards,
+        subscriptions=subscriptions,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance
+    )
+
+# ===== LOGOUT =====
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('index'))
 
+# ===== FEATURES PAGE =====
 @app.route('/features')
 def features():
     return render_template('features.html')
 
+# ===== RUN APP =====
 if __name__ == "__main__":
     app.run(debug=True)
