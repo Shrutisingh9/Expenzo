@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cards - Expenzo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
+</head>
+<body>
+  {% include 'partials/navbar.html' %}
+  <main class="content">
+    <h2>Cards</h2>
+
+    <section class="add-card">
+      <h3>Add Card</h3>
+      <form id="addCardForm">
+        <input name="cardholder" placeholder="Cardholder name" required>
+        <input name="number" placeholder="Card number" required>
+        <div class="row">
+          <input name="exp_month" placeholder="MM" required>
+          <input name="exp_year" placeholder="YYYY" required>
+          <input name="brand" placeholder="Brand (Visa/Mastercard)" required>
+        </div>
+        <button type="submit">Add Card</button>
+      </form>
+    </section>
+
+    <section class="list-cards">
+      <h3>Your Cards</h3>
+      <div id="cardsContainer">
+        {% for c in cards %}
+        <div class="card-item" data-id="{{ c._id }}">
+          <div>{{ c.cardholder }}</div>
+          <div>**** **** **** {{ c.number[-4:] }}</div>
+          <button class="btn-delete-card" data-id="{{ c._id }}">Delete</button>
+        </div>
+        {% else %}
+        <p>No cards added yet</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</body>
+</html>

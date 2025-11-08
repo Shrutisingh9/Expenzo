@@ -731,6 +731,25 @@ a {
   font-weight: bold;
 }
 
+input:focus {
+  outline: none;
+}
+
+input.error {
+  border-color: #e74c3c !important;
+}
+
+input.success {
+  border-color: #2ecc71 !important;
+}
+
+.error-msg {
+  color: #e74c3c;
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+
+
 /* Dashboard */
 .dashboard {
   margin-left: 270px;
@@ -1078,4 +1097,193 @@ a {
 
 .register-link a:hover {
   text-decoration: underline;
+}
+/* ---------- SIDEBAR ---------- */
+.sidebar {
+  background: linear-gradient(180deg, #06b6d4, #0ea5e9);
+  color: #fff;
+  width: 240px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar .brand {
+  font-size: 1.6em;
+  font-weight: bold;
+  margin-bottom: 40px;
+}
+
+.sidebar nav a {
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  padding: 10px 0;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: 0.3s;
+}
+
+.sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.15);
+  padding-left: 8px;
+}
+
+/* ---------- MAIN CONTENT ---------- */
+.main-content, .content {
+  flex: 1;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 20px 0 0 20px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.topbar h1 {
+  font-size: 1.8em;
+  color: #0f172a;
+}
+
+.topbar .balance {
+  font-weight: 600;
+  color: #0ea5e9;
+  font-size: 1.1em;
+}
+
+/* ---------- CARDS GRID ---------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.card {
+  background: #f1f5f9;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+.card h3 {
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+.card p.big {
+  font-size: 1.8em;
+  color: #0284c7;
+}
+
+/* ---------- MINI CARDS ---------- */
+.mini-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.small-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #06b6d4;
+  color: #fff;
+  text-decoration: none;
+  transition: background 0.3s;
+}
+
+.small-btn:hover {
+  background: #0891b2;
+}
+
+/* ---------- FORMS ---------- */
+form {
+  background: #f1f5f9;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+
+form input, form select {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95em;
+}
+
+form button {
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+form button:hover {
+  background: #0284c7;
+}
+
+/* ---------- TRANSACTIONS ---------- */
+.recent-transactions li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.recent-transactions .t-amount.neg {
+  color: #ef4444;
+}
+
+/* ---------- CHARTS ---------- */
+canvas {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+  margin: 20px 0;
+  padding: 10px;
+}
+
+/* ---------- BUTTONS ---------- */
+.btn-delete-card, .del-sub {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-delete-card:hover, .del-sub:hover {
+  background: #dc2626;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  .main-content, .content {
+    padding: 20px;
+    border-radius: 0;
+  }
 }

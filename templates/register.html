@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Register - Expenzo</title>
-  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 </head>
 <body>
@@ -20,13 +20,15 @@
       <div class="auth-card">
         <h2>Create Account</h2>
         <form id="registerForm">
-          <input type="text" placeholder="Full Name" required>
-          <input type="email" placeholder="Email" required>
-          <input type="password" placeholder="Password" required>
-          <input type="text" placeholder="Phone Number" required>
-          <input type="date" required>
+          <input type="text" name="name" id="name" placeholder="Full Name" required>
+          <input type="email" name="email" id="email" placeholder="Email" required>
+          <input type="password" name="password" id="password" placeholder="Password" required>
+          <input type="text" name="phone" id="phone" placeholder="Phone Number">
+          <input type="date" name="dob" id="dob">
+          <div class="form-message" id="registerMessage"></div>
           <button type="submit">Register</button>
         </form>
+
 
         <div class="divider">
           <span>or sign up with</span>
@@ -43,6 +45,6 @@
     </div>
   </div>
 
-<script src="static/script.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

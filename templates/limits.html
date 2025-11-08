@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Limits - Expenzo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
+</head>
+<body>
+  {% include 'partials/navbar.html' %}
+  <main class="content">
+    <h2>Expense Limit</h2>
+    <form id="setLimitForm">
+      <input name="limit" type="number" step="0.01" placeholder="Monthly limit amount (e.g. 20000)" value="{{ limit.limit if limit else '' }}">
+      <select name="period">
+        <option value="monthly" {% if limit and limit.period == 'monthly' %}selected{% endif %}>Monthly</option>
+        <option value="weekly" {% if limit and limit.period == 'weekly' %}selected{% endif %}>Weekly</option>
+      </select>
+      <button type="submit">Set / Update Limit</button>
+    </form>
+
+    {% if limit %}
+    <section class="limit-summary">
+      <h3>Current Limit: ₹{{ limit.limit }} / {{ limit.period }}</h3>
+      <!-- show usage (you can compute via API) -->
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

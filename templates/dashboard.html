@@ -1,91 +1,100 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>Dashboard - Expenzo</title>
-  <link rel="stylesheet" href="static/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
 </head>
 <body>
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="profile">
-      <img src="https://img.icons8.com/ios-filled/50/ffffff/user.png" alt="Profile">
-      <p>{{ name }}</p>
-    </div>
-    <ul class="menu">
-      <li><a href="#">Home</a></li>
-      <li><a href="#">Cards</a></li>
-      <li><a href="#">Income</a></li>
-      <li><a href="#">Expense</a></li>
-      <li><a href="#">Visualization</a></li>
-      <li><a href="#">Transactions</a></li>
-      <li><a href="#">Limits</a></li>
-      <li><a href="#">Subscriptions</a></li>
-      <li><a href="#">Settings</a></li>
-    </ul>
-    <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
-  </aside>
+  {% include 'partials/navbar.html' %}
+  <div class="app-grid">
+    <aside class="sidebar">
+      <!-- compact sidebar icons / links -->
+      <div class="brand">Expenzo</div>
+      <nav>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('cards_page') }}">Cards</a>
+        <a href="{{ url_for('income_page') }}">Income</a>
+        <a href="{{ url_for('expense_page') }}">Expense</a>
+        <a href="{{ url_for('transactions_page') }}">Transactions</a>
+        <a href="{{ url_for('limits_page') }}">Limits</a>
+        <a href="{{ url_for('subscriptions_page') }}">Subscriptions</a>
+        <a href="{{ url_for('features') }}">Visualization</a>
+      </nav>
+    </aside>
 
-  <!-- Main Content -->
-  <main class="dashboard">
-    <h1>Expenzo Dashboard</h1>
+    <main class="main-content">
+      <header class="topbar">
+        <h1>Dashboard</h1>
+        <div class="topbar-right">
+          <div class="balance">Balance: ₹{{ balance }}</div>
+        </div>
+      </header>
 
-    <div class="grid">
-      <!-- Cards -->
-      <div class="box">
-        <h3>Your Cards</h3>
-        {% for card in cards %}
-          <p>{{ card['card_number'] }} ({{ card['type'] }})</p>
-        {% endfor %}
-        <button class="btn">+ Add Card</button>
-      </div>
+      <section class="card-grid">
+        <article class="card card-balance">
+          <h3>Total Balance</h3>
+          <p class="big">₹{{ balance }}</p>
+          <div class="mini-graph" id="miniBalanceChart"></div>
+        </article>
 
-      <!-- Transactions -->
-      <div class="box">
-        <h3>Transactions</h3>
-        <select id="filter">
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="year">This Year</option>
-        </select>
-        <ul>
-          {% for t in transactions %}
-            <li>{{ t["name"] }} - ${{ t["amount"] }} - {{ t["status"] }} - {{ t["note"] }}</li>
-          {% endfor %}
-        </ul>
-      </div>
+        <article class="card card-spending">
+          <h3>Top Spending</h3>
+          <div id="topSpendingChart"></div>
+          <ul>
+            <!-- small list of categories -->
+          </ul>
+        </article>
 
-      <!-- Total Summary -->
-      <div class="box">
-        <h3>Totals</h3>
-        <p>Total Income: ${{ total_income }}</p>
-        <p>Total Expense: ${{ total_expense }}</p>
-      </div>
+        <article class="card card-cards">
+          <h3>Your Cards</h3>
+          <div class="cards-list">
+            {% for c in cards %}
+              <div class="mini-card">
+                <div class="brand">{{ c.brand or 'Card' }}</div>
+                <div class="number">**** **** **** {{ c.number[-4:] if c.number else '----' }}</div>
+              </div>
+            {% else %}
+              <p>No cards added</p>
+            {% endfor %}
+          </div>
+          <a class="small-btn" href="{{ url_for('cards_page') }}">Manage Cards</a>
+        </article>
 
-      <!-- Charts -->
-      <div class="box">
-        <h3>Visualization</h3>
-        <canvas id="expenseChart"></canvas>
-      </div>
+        <article class="card card-transactions">
+          <h3>Recent Transactions</h3>
+          <ul class="recent-transactions">
+            {% for t in recent_transactions %}
+              <li>
+                <div class="t-left">
+                  <div class="t-title">{{ t.get('category') or t.get('source') or t.get('payee') }}</div>
+                  <div class="t-date">{{ t.get('date') }}</div>
+                </div>
+                <div class="t-right">
+                  <div class="t-amount {% if t.type == 'expense' %}neg{% endif %}">₹{{ t.amount }}</div>
+                </div>
+              </li>
+            {% else %}
+              <li>No recent transactions</li>
+            {% endfor %}
+          </ul>
+          <a class="small-btn" href="{{ url_for('transactions_page') }}">View All</a>
+        </article>
 
-      <!-- Limits -->
-      <div class="box">
-        <h3>Monthly Limit</h3>
-        <progress value="{{ total_expense }}" max="5000"></progress>
-        <p>Limit: $5000</p>
-      </div>
-
-      <!-- Subscriptions -->
-      <div class="box">
-        <h3>Subscriptions</h3>
-        {% for s in subscriptions %}
-          <p>{{ s["name"] }} - ${{ s["price"] }} - Renews: {{ s["renewal_date"] }}</p>
-        {% endfor %}
-      </div>
-    </div>
-  </main>
-
-  <script src="static/script.js"></script>
+        <article class="card card-subscriptions">
+          <h3>Upcoming Subscriptions</h3>
+          <ul>
+            {% for s in subscriptions %}
+              <li>{{ s.name }} — ₹{{ s.amount }} (next: {{ s.next_payment_date }})</li>
+            {% else %}
+              <li>No active subscriptions</li>
+            {% endfor %}
+          </ul>
+          <a class="small-btn" href="{{ url_for('subscriptions_page') }}">Manage</a>
+        </article>
+      </section>
+    </main>
+  </div>
 </body>
 </html>

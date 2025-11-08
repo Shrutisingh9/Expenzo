@@ -1,0 +1,9 @@
+<header class="top-header">
+  <div class="left">
+    <a href="{{ url_for('dashboard') }}" class="brand">Expenzo</a>
+  </div>
+  <div class="right">
+    <span>{{ session.get('name') }}</span>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</header>
