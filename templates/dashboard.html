@@ -110,7 +110,7 @@
             {% set colors = ['#4A90E2', '#7B68EE', '#FF6B9D', '#95A5A6', '#F39C12', '#E74C3C'] %}
             {% set color_index = loop.index0 % colors|length %}
             <div class="legend-item">
-              <span class="legend-dot" style="background-color: {{ colors[color_index] }};"></span>
+              <span class="legend-dot" data-color="{{ colors[color_index] }}"></span>
               <span>{{ category }} (₹{{ "%.2f"|format(amount) }})</span>
             </div>
             {% else %}
@@ -241,15 +241,31 @@
     </main>
   </div>
 
+  <script type="application/json" id="dashboard-data">
+    {
+      "totalIncome": {{ total_income|default(0) }},
+      "totalExpense": {{ total_expense|default(0) }},
+      "balance": {{ balance|default(0) }},
+      "categorySpending": {{ category_spending|tojson|safe }},
+      "recentTransactions": {{ recent_transactions|tojson|safe }}
+    }
+  </script>
   <script>
     // Pass data to JavaScript
-    window.dashboardData = {
-      totalIncome: {{ total_income }},
-      totalExpense: {{ total_expense }},
-      balance: {{ balance }},
-      categorySpending: {{ category_spending|tojson }},
-      recentTransactions: {{ recent_transactions|tojson }}
-    };
+    (function() {
+      var dataScript = document.getElementById('dashboard-data');
+      if (dataScript) {
+        window.dashboardData = JSON.parse(dataScript.textContent);
+      }
+    })();
+    
+    // Apply legend dot colors
+    document.addEventListener('DOMContentLoaded', function() {
+      var legendDots = document.querySelectorAll('.legend-dot[data-color]');
+      legendDots.forEach(function(dot) {
+        dot.style.backgroundColor = dot.getAttribute('data-color');
+      });
+    });
   </script>
 </body>
 </html>
