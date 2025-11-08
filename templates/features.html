@@ -4,26 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Expenzo - All Features</title>
-  <link rel="stylesheet" href="../static/style.css" />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
 <body>
   <!-- Navbar -->
   <header class="navbar">
-    <div class="logo-container">
-      <img src="../assets/logo.png" alt="Expenzo Logo" class="logo-img" />
-      <span class="logo-text">Expenzo</span>
+    <div class="nav-left">
+      <img src="{{ url_for('static', filename='assets/expenzologo (2).png') }}" alt="Expenzo Logo" class="logo-img">
+      <!-- <span class="logo-text">Expenzo</span> -->
     </div>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="features.html" class="active">Features</a>
-      <a href="dashboard.html">Dashboard</a>
-      <a href="#">Contact</a>
+
+    <nav class="nav-center">
+      <a href="{{ url_for('index') }}">Home</a>
+      <a href="#about">About</a>
+      <a href="{{ url_for('features') }}">Services</a>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
     </nav>
-    <button class="btn">Get Started</button>
+
+    <div class="nav-right">
+      <a href="{{ url_for('login') }}" class="btn get-started">Get Started →</a>
+    </div>
   </header>
 
   <!-- All Features Section -->
