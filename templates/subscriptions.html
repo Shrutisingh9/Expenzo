@@ -1,0 +1,183 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Subscriptions - Expenzo{% endblock %}
+
+{% block content %}
+      <header class="dashboard-header">
+        <h1>Subscriptions</h1>
+        <button class="add-btn" id="showAddSubscriptionForm">
+          <i class='bx bx-plus'></i> Add Subscription
+        </button>
+      </header>
+
+      <!-- Add Subscription Form -->
+      <div class="form-container" id="addSubscriptionFormContainer" style="display: none;">
+        <div class="form-card">
+          <h3>Add New Subscription</h3>
+          <form id="addSubscriptionForm">
+            <div class="form-group">
+              <label>Subscription Name</label>
+              <input type="text" name="name" placeholder="e.g., Netflix, Spotify, Prime" required>
+            </div>
+            <div class="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" name="amount" step="0.01" placeholder="0.00" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Billing Cycle</label>
+              <select name="cycle" required>
+                <option value="monthly">Monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="yearly">Yearly</option>
+                <option value="quarterly">Quarterly</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" name="start_date" value="{{ date.today().isoformat() if date else '' }}">
+            </div>
+            <div class="form-group">
+              <label>Next Payment Date</label>
+              <input type="date" name="next_payment_date" required>
+            </div>
+            <div class="form-group">
+              <label>End Date (Optional)</label>
+              <input type="date" name="end_date">
+            </div>
+            <div class="form-group">
+              <label>Notes (Optional)</label>
+              <textarea name="notes" placeholder="Additional details..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Add Subscription</button>
+              <button type="button" class="btn-secondary" id="cancelAddSubscription">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Upcoming Reminders -->
+      <div class="reminders-section">
+        <h3>Upcoming Payments (Next 7 Days)</h3>
+        <div class="reminders-list" id="upcomingReminders">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Subscriptions List -->
+      <div class="subscriptions-grid">
+        {% for sub in subscriptions %}
+        <div class="subscription-card" data-id="{{ sub._id }}">
+          <div class="subscription-header">
+            <div class="subscription-icon">
+              <i class='bx bx-calendar-check'></i>
+            </div>
+            <div class="subscription-info">
+              <h4>{{ sub.get('name', 'Subscription') }}</h4>
+              <span class="subscription-cycle">{{ sub.get('cycle', 'monthly').title() }}</span>
+            </div>
+            <div class="subscription-actions">
+              <button class="btn-icon edit-subscription" data-id="{{ sub._id }}" title="Edit">
+                <i class='bx bx-edit'></i>
+              </button>
+              <button class="btn-icon delete-subscription" data-id="{{ sub._id }}" title="Delete">
+                <i class='bx bx-trash'></i>
+              </button>
+            </div>
+          </div>
+          <div class="subscription-body">
+            <div class="subscription-amount">₹{{ "%.2f"|format(sub.get('amount', 0)) }}</div>
+            <div class="subscription-dates">
+              <div class="date-item">
+                <span class="date-label">Next Payment:</span>
+                <span class="date-value {% if sub.get('next_payment_date') %}upcoming{% endif %}">
+                  {{ sub.get('next_payment_date', 'N/A') }}
+                </span>
+              </div>
+              {% if sub.get('end_date') %}
+              <div class="date-item">
+                <span class="date-label">Ends:</span>
+                <span class="date-value">{{ sub.get('end_date') }}</span>
+              </div>
+              {% endif %}
+            </div>
+            {% if sub.get('notes') %}
+            <div class="subscription-notes">{{ sub.get('notes') }}</div>
+            {% endif %}
+          </div>
+          <div class="subscription-footer">
+            {% if sub.get('next_payment_date') %}
+            {% set days_left = (sub.get('next_payment_date')|string|length) %}
+            <div class="days-remaining">
+              <i class='bx bx-time-five'></i>
+              <span id="daysLeft-{{ sub._id }}">Calculating...</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state-subscriptions">
+          <i class='bx bx-calendar-x'></i>
+          <h3>No Subscriptions</h3>
+          <p>Add your subscriptions to track recurring payments and get reminders.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Subscription Modal (hidden by default) -->
+  <div class="modal" id="editSubscriptionModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Subscription</h3>
+        <button class="modal-close" id="closeEditModal">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
+      <form id="editSubscriptionForm">
+        <input type="hidden" name="subscription_id" id="editSubscriptionId">
+        <div class="form-group">
+          <label>Subscription Name</label>
+          <input type="text" name="name" id="editName" required>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" name="amount" id="editAmount" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+          <label>Billing Cycle</label>
+          <select name="cycle" id="editCycle" required>
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="yearly">Yearly</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Next Payment Date</label>
+          <input type="date" name="next_payment_date" id="editNextDate" required>
+        </div>
+        <div class="form-group">
+          <label>End Date (Optional)</label>
+          <input type="date" name="end_date" id="editEndDate">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea name="notes" id="editNotes"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Update Subscription</button>
+          <button type="button" class="btn-secondary" id="cancelEditSubscription">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    window.subscriptionsData = {{ subscriptions|tojson }};
+  </script>
+{% endblock %}
+

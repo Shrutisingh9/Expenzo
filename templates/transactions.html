@@ -1,0 +1,153 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Transaction History - Expenzo{% endblock %}
+
+{% block content %}
+      <header class="dashboard-header">
+        <h1>Transaction History</h1>
+        <div class="header-actions">
+          <button class="filter-btn-header" id="showFilters">
+            <i class='bx bx-filter'></i> Filter
+          </button>
+        </div>
+      </header>
+
+      <!-- Filter Panel -->
+      <div class="filter-panel" id="filterPanel" style="display: none;">
+        <div class="filter-content">
+          <div class="filter-group">
+            <label>Type</label>
+            <div class="filter-buttons">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="income">Income</button>
+              <button class="filter-btn" data-filter="expense">Expense</button>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Sort By</label>
+            <div class="filter-buttons">
+              <button class="filter-btn sort-btn active" data-sort="latest">Latest</button>
+              <button class="filter-btn sort-btn" data-sort="oldest">Oldest</button>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Time Period</label>
+            <div class="filter-buttons">
+              <button class="filter-btn period-btn active" data-period="all">All Time</button>
+              <button class="filter-btn period-btn" data-period="1month">1 Month</button>
+              <button class="filter-btn period-btn" data-period="6months">6 Months</button>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Date Range</label>
+            <div class="date-range">
+              <input type="date" id="startDate" class="date-input">
+              <span>to</span>
+              <input type="date" id="endDate" class="date-input">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Search</label>
+            <input type="text" class="search-input" placeholder="Search transactions..." id="transactionSearch">
+          </div>
+          <div class="filter-actions">
+            <button class="btn-primary" id="applyFilters">Apply Filters</button>
+            <button class="btn-secondary" id="clearFilters">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Summary -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-icon income-icon">
+            <i class='bx bx-trending-up'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Income</div>
+            <div class="summary-value" id="totalIncome">₹{{ "%.2f"|format(total_income) if total_income else "0.00" }}</div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon expense-icon">
+            <i class='bx bx-trending-down'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Expenses</div>
+            <div class="summary-value" id="totalExpense">₹{{ "%.2f"|format(total_expense) if total_expense else "0.00" }}</div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon balance-icon">
+            <i class='bx bx-wallet'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Net Balance</div>
+            <div class="summary-value {% if net_balance < 0 %}negative{% else %}positive{% endif %}" id="netBalance">₹{{ "%.2f"|format(net_balance) if net_balance else "0.00" }}</div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon count-icon">
+            <i class='bx bx-list-ul'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Transactions</div>
+            <div class="summary-value">{{ transactions|length }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transactions List -->
+      <div class="transactions-list-container">
+        <div class="transactions-timeline">
+          {% for tx in transactions %}
+          <div class="transaction-timeline-item" data-type="{{ tx.get('type', '') }}" data-date="{{ tx.get('date', '')[:10] if tx.get('date') else '' }}">
+            <div class="timeline-marker {% if tx.get('type') == 'income' %}income-marker{% else %}expense-marker{% endif %}">
+              {% if tx.get('type') == 'income' %}
+              <i class='bx bx-trending-up'></i>
+              {% else %}
+              <i class='bx bx-trending-down'></i>
+              {% endif %}
+            </div>
+            <div class="timeline-content">
+              <div class="transaction-main">
+                <div class="transaction-info">
+                  <div class="transaction-title">{{ tx.get('category') or tx.get('source') or tx.get('payee') or 'Transaction' }}</div>
+                  <div class="transaction-meta">
+                    <span class="transaction-type-badge {% if tx.get('type') == 'income' %}income-badge{% else %}expense-badge{% endif %}">
+                      {{ tx.get('type', '').title() }}
+                    </span>
+                    <span class="transaction-date">{{ tx.get('date', 'N/A')[:10] if tx.get('date') else 'N/A' }}</span>
+                  </div>
+                </div>
+                <div class="transaction-amount {% if tx.get('type') == 'expense' %}negative{% else %}positive{% endif %}">
+                  {% if tx.get('type') == 'expense' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(tx.get('amount', 0)) }}
+                </div>
+              </div>
+              {% if tx.get('note') %}
+              <div class="transaction-note">{{ tx.get('note') }}</div>
+              {% endif %}
+              <div class="transaction-actions">
+                <button class="btn-icon delete-transaction" data-id="{{ tx._id }}" title="Delete">
+                  <i class='bx bx-trash'></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="empty-state-transactions">
+            <i class='bx bx-inbox'></i>
+            <h3>No Transactions Yet</h3>
+            <p>Start adding income and expenses to see your transaction history here.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    window.transactionsData = {{ transactions|tojson }};
+  </script>
+{% endblock %}
+

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Expenzo{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-styles.css') }}">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</head>
+<body>
+  {% include 'partials/navbar.html' %}
+  
+  <div class="dashboard-container">
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-brand">
+        <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">
+          <h2>Expenzo</h2>
+        </a>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+          <i class='bx bx-home'></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('cards_page') }}" class="nav-item {% if active_page == 'cards' %}active{% endif %}">
+          <i class='bx bx-credit-card'></i>
+          <span>Cards</span>
+        </a>
+        <a href="{{ url_for('income_page') }}" class="nav-item {% if active_page == 'income' %}active{% endif %}">
+          <i class='bx bx-money'></i>
+          <span>Income</span>
+        </a>
+        <a href="{{ url_for('expense_page') }}" class="nav-item {% if active_page == 'expense' %}active{% endif %}">
+          <i class='bx bx-wallet'></i>
+          <span>Expense</span>
+        </a>
+        <a href="{{ url_for('transactions_page') }}" class="nav-item {% if active_page == 'transactions' %}active{% endif %}">
+          <i class='bx bx-history'></i>
+          <span>Transactions</span>
+        </a>
+        <a href="{{ url_for('limits_page') }}" class="nav-item {% if active_page == 'limits' %}active{% endif %}">
+          <i class='bx bx-bar-chart-alt-2'></i>
+          <span>Limits</span>
+        </a>
+        <a href="{{ url_for('subscriptions_page') }}" class="nav-item {% if active_page == 'subscriptions' %}active{% endif %}">
+          <i class='bx bx-calendar-check'></i>
+          <span>Subscriptions</span>
+        </a>
+        <a href="{{ url_for('visualization_page') }}" class="nav-item {% if active_page == 'visualization' %}active{% endif %}">
+          <i class='bx bx-line-chart'></i>
+          <span>Visualization</span>
+        </a>
+      </nav>
+    </aside>
+
+    <main class="dashboard-main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>
+

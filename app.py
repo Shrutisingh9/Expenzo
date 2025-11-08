@@ -271,12 +271,30 @@ def dashboard():
     recent_transactions = list(transactions_col.find({"user_id": user_id}).sort("created_at", -1).limit(6))
     subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1).limit(6))
     user_limit = limits_col.find_one({"user_id": user_id})
+    if user_limit:
+        user_limit["_id"] = str(user_limit["_id"])
 
-    # Compute totals
+    # Compute totals and category breakdown
     all_tx = list(transactions_col.find({"user_id": user_id}))
     total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
     total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
     balance = total_income - total_expense
+    
+    # Calculate spending by category
+    category_spending = {}
+    for t in all_tx:
+        if t.get("type") == "expense":
+            category = t.get("category", "Other")
+            category_spending[category] = category_spending.get(category, 0) + float(t.get("amount", 0))
+    
+    # Get recent income and expenses separately
+    recent_income = list(transactions_col.find({"user_id": user_id, "type": "income"}).sort("created_at", -1).limit(5))
+    recent_expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}).sort("created_at", -1).limit(5))
+    
+    for i in recent_income:
+        i["_id"] = str(i["_id"])
+    for e in recent_expenses:
+        e["_id"] = str(e["_id"])
 
     # Convert ObjectIds for JSON
     for c in cards:
@@ -311,7 +329,11 @@ def dashboard():
         total_income=total_income,
         total_expense=total_expense,
         balance=balance,
-        user_name=session.get("user_name", "")
+        user_name=session.get("user_name", ""),
+        category_spending=category_spending,
+        recent_income=recent_income,
+        recent_expenses=recent_expenses,
+        active_page="dashboard"
     )
 # -------------------- CARDS --------------------
 @app.route("/cards")
@@ -329,7 +351,7 @@ def cards_page():
     for c in cards:
         c["_id"] = str(c["_id"])
 
-    return render_template("cards.html", cards=cards)
+    return render_template("cards.html", cards=cards, active_page="cards")
 
 @app.route("/api/cards", methods=["POST"])
 def api_create_card():
@@ -435,10 +457,16 @@ def api_delete_card(card_id):
 def income_page():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    incomes = list(transactions_col.find({"user_id": session["user_id"], "type": "income"}).sort("created_at", -1).limit(50))
+    user_id = session["user_id"]
+    incomes = list(transactions_col.find({"user_id": user_id, "type": "income"}).sort("created_at", -1).limit(200))
     for i in incomes:
         i["_id"] = str(i["_id"])
-    return render_template("income.html", incomes=incomes)
+    
+    # Calculate total income
+    all_income = list(transactions_col.find({"user_id": user_id, "type": "income"}))
+    total_income = sum(float(t.get("amount", 0)) for t in all_income)
+    
+    return render_template("income.html", incomes=incomes, total_income=total_income, active_page="income")
 
 
 @app.route("/api/income", methods=["POST"])
@@ -500,10 +528,16 @@ def api_delete_income(income_id):
 def expense_page():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    expenses = list(transactions_col.find({"user_id": session["user_id"], "type": "expense"}).sort("created_at", -1).limit(50))
+    user_id = session["user_id"]
+    expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}).sort("created_at", -1).limit(200))
     for e in expenses:
         e["_id"] = str(e["_id"])
-    return render_template("expense.html", expenses=expenses)
+    
+    # Calculate total expense
+    all_expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}))
+    total_expense = sum(float(t.get("amount", 0)) for t in all_expenses)
+    
+    return render_template("expense.html", expenses=expenses, total_expense=total_expense, active_page="expense")
 
 
 @app.route("/api/expense", methods=["POST"])
@@ -569,16 +603,30 @@ def api_delete_expense(expense_id):
 @app.route("/transactions")
 def transactions_page():
     if "user_id" not in session:
-        return redirect(url_for("login_page"))
+        return redirect(url_for("login"))
     
-    txs = list(transactions_col.find({"user_id": session["user_id"]})
+    user_id = session["user_id"]
+    txs = list(transactions_col.find({"user_id": user_id})
                .sort("created_at", -1)
                .limit(200))
+    
+    # Calculate totals
+    all_txs = list(transactions_col.find({"user_id": user_id}))
+    total_income = sum(float(t.get("amount", 0)) for t in all_txs if t.get("type") == "income")
+    total_expense = sum(float(t.get("amount", 0)) for t in all_txs if t.get("type") == "expense")
+    net_balance = total_income - total_expense
     
     for t in txs:
         t["_id"] = str(t["_id"])
     
-    return render_template("transactions.html", transactions=txs)
+    return render_template(
+        "transactions.html", 
+        transactions=txs, 
+        total_income=total_income,
+        total_expense=total_expense,
+        net_balance=net_balance,
+        active_page="transactions"
+    )
 
 
 # ✅ Get all transactions (for Postman)
@@ -625,7 +673,10 @@ def limits_page():
         return redirect(url_for("login"))
     
     limit = limits_col.find_one({"user_id": session["user_id"]})
-    return render_template("limits.html", limit=limit)
+    if limit:
+        limit["_id"] = str(limit["_id"])
+    
+    return render_template("limits.html", limit=limit, active_page="limits")
 
 
 # ✅ Get current user's limit
@@ -690,11 +741,12 @@ def api_delete_limit():
 @app.route("/subscriptions")
 def subscriptions_page():
     if "user_id" not in session:
-        return redirect(url_for("login_page"))
-    subs = list(subscriptions_col.find({"user_id": session["user_id"]}).sort("next_payment_date", 1))
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1))
     for s in subs:
         s["_id"] = str(s["_id"])
-    return render_template("subscriptions.html", subscriptions=subs)
+    return render_template("subscriptions.html", subscriptions=subs, active_page="subscriptions")
 
 
 # ---------- CREATE SUBSCRIPTION ----------
@@ -866,6 +918,46 @@ def api_upcoming_subscriptions():
 
 
 # -------------------- VISUALIZATION --------------------
+@app.route("/visualization")
+def visualization_page():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    user_id = session["user_id"]
+    txs = list(transactions_col.find({"user_id": user_id}))
+    
+    # Calculate summary data
+    total_income = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "income")
+    total_expense = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "expense")
+    
+    # Category breakdown
+    category_expenses = {}
+    for t in txs:
+        if t.get("type") == "expense":
+            category = t.get("category", "Other")
+            category_expenses[category] = category_expenses.get(category, 0) + float(t.get("amount", 0))
+    
+    # Income sources
+    income_sources = {}
+    for t in txs:
+        if t.get("type") == "income":
+            source = t.get("source", "Other")
+            income_sources[source] = income_sources.get(source, 0) + float(t.get("amount", 0))
+    
+    # Convert ObjectIds in transactions for JSON serialization
+    for tx in txs:
+        tx["_id"] = str(tx["_id"])
+    
+    return render_template(
+        "visualization.html",
+        total_income=total_income,
+        total_expense=total_expense,
+        category_expenses=category_expenses,
+        income_sources=income_sources,
+        transactions=txs,
+        active_page="visualization"
+    )
+
 @app.route("/api/visualization/summary", methods=["GET"])
 def api_visualization_summary():
     if "user_id" not in session:

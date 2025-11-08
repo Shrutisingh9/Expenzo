@@ -1287,3 +1287,6 @@ canvas {
     border-radius: 0;
   }
 }
+
+/* Import Dashboard Styles */
+@import url('dashboard-styles.css');

@@ -1,100 +1,255 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Expenzo</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-styles.css') }}">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
 </head>
 <body>
   {% include 'partials/navbar.html' %}
-  <div class="app-grid">
-    <aside class="sidebar">
-      <!-- compact sidebar icons / links -->
-      <div class="brand">Expenzo</div>
-      <nav>
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('cards_page') }}">Cards</a>
-        <a href="{{ url_for('income_page') }}">Income</a>
-        <a href="{{ url_for('expense_page') }}">Expense</a>
-        <a href="{{ url_for('transactions_page') }}">Transactions</a>
-        <a href="{{ url_for('limits_page') }}">Limits</a>
-        <a href="{{ url_for('subscriptions_page') }}">Subscriptions</a>
-        <a href="{{ url_for('features') }}">Visualization</a>
+  
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-brand">
+        <h2>Expenzo</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-item active">
+          <i class='bx bx-home'></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('cards_page') }}" class="nav-item">
+          <i class='bx bx-credit-card'></i>
+          <span>Cards</span>
+        </a>
+        <a href="{{ url_for('income_page') }}" class="nav-item">
+          <i class='bx bx-money'></i>
+          <span>Income</span>
+        </a>
+        <a href="{{ url_for('expense_page') }}" class="nav-item">
+          <i class='bx bx-wallet'></i>
+          <span>Expense</span>
+        </a>
+        <a href="{{ url_for('transactions_page') }}" class="nav-item">
+          <i class='bx bx-history'></i>
+          <span>Transactions</span>
+        </a>
+        <a href="{{ url_for('limits_page') }}" class="nav-item">
+          <i class='bx bx-bar-chart-alt-2'></i>
+          <span>Limits</span>
+        </a>
+        <a href="{{ url_for('subscriptions_page') }}" class="nav-item">
+          <i class='bx bx-calendar-check'></i>
+          <span>Subscriptions</span>
+        </a>
+        <a href="{{ url_for('visualization_page') }}" class="nav-item">
+          <i class='bx bx-line-chart'></i>
+          <span>Visualization</span>
+        </a>
       </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <i class='bx bx-user-circle'></i>
+          <span>{{ user_name }}</span>
+        </div>
+      </div>
     </aside>
 
-    <main class="main-content">
-      <header class="topbar">
+    <!-- Main Content -->
+    <main class="dashboard-main">
+      <!-- Top Bar -->
+      <header class="dashboard-header">
         <h1>Dashboard</h1>
-        <div class="topbar-right">
-          <div class="balance">Balance: ₹{{ balance }}</div>
+        <div class="header-actions">
+          <i class='bx bx-search'></i>
+          <i class='bx bx-bell'></i>
+          <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
         </div>
       </header>
 
-      <section class="card-grid">
-        <article class="card card-balance">
-          <h3>Total Balance</h3>
-          <p class="big">₹{{ balance }}</p>
-          <div class="mini-graph" id="miniBalanceChart"></div>
-        </article>
+      <!-- Dashboard Grid -->
+      <div class="dashboard-grid">
+        <!-- Total Balance Card -->
+        <div class="dashboard-card balance-card">
+          <div class="card-header">
+            <h3>Total Balance</h3>
+          </div>
+          <div class="balance-amount">₹{{ "%.2f"|format(balance) }}</div>
+            {% if total_income > 0 %}
+            {% set earnings_pct = ((total_income - total_expense) / total_income * 100) if total_income > 0 else 0 %}
+            <div class="balance-trend">
+              <span class="trend-positive">
+                <i class='bx bx-trending-up'></i>
+                Earnings +{{ "%.2f"|format(earnings_pct) }}%
+              </span>
+            </div>
+            {% endif %}
+          <div class="balance-chart">
+            <canvas id="balanceChart"></canvas>
+          </div>
+        </div>
 
-        <article class="card card-spending">
-          <h3>Top Spending</h3>
-          <div id="topSpendingChart"></div>
-          <ul>
-            <!-- small list of categories -->
-          </ul>
-        </article>
-
-        <article class="card card-cards">
-          <h3>Your Cards</h3>
-          <div class="cards-list">
-            {% for c in cards %}
-              <div class="mini-card">
-                <div class="brand">{{ c.brand or 'Card' }}</div>
-                <div class="number">**** **** **** {{ c.number[-4:] if c.number else '----' }}</div>
-              </div>
+        <!-- Top Spending Card -->
+        <div class="dashboard-card spending-card">
+          <div class="card-header">
+            <h3>Top Spending</h3>
+          </div>
+          <div class="spending-amount">₹{{ "%.2f"|format(total_expense) }}</div>
+          <div class="spending-chart">
+            <canvas id="spendingChart"></canvas>
+          </div>
+          <div class="spending-legend">
+            {% for category, amount in category_spending.items() %}
+            {% set colors = ['#4A90E2', '#7B68EE', '#FF6B9D', '#95A5A6', '#F39C12', '#E74C3C'] %}
+            {% set color_index = loop.index0 % colors|length %}
+            <div class="legend-item">
+              <span class="legend-dot" style="background-color: {{ colors[color_index] }};"></span>
+              <span>{{ category }} (₹{{ "%.2f"|format(amount) }})</span>
+            </div>
             {% else %}
-              <p>No cards added</p>
+            <p>No spending data</p>
             {% endfor %}
           </div>
-          <a class="small-btn" href="{{ url_for('cards_page') }}">Manage Cards</a>
-        </article>
+        </div>
 
-        <article class="card card-transactions">
-          <h3>Recent Transactions</h3>
-          <ul class="recent-transactions">
-            {% for t in recent_transactions %}
-              <li>
-                <div class="t-left">
-                  <div class="t-title">{{ t.get('category') or t.get('source') or t.get('payee') }}</div>
-                  <div class="t-date">{{ t.get('date') }}</div>
-                </div>
-                <div class="t-right">
-                  <div class="t-amount {% if t.type == 'expense' %}neg{% endif %}">₹{{ t.amount }}</div>
-                </div>
-              </li>
+        <!-- Cards Card -->
+        <div class="dashboard-card cards-preview-card">
+          <div class="card-header">
+            <h3>Cards</h3>
+            <a href="{{ url_for('cards_page') }}" class="view-all-link">View All</a>
+          </div>
+          <div class="cards-preview">
+            {% for card in cards[:2] %}
+            <div class="preview-card-item">
+              <div class="card-brand">{{ card.get('brand', 'Card') }}</div>
+              <div class="card-number">{{ card.get('masked_number', '**** **** **** ' + card.get('last4', '----')) }}</div>
+              <div class="card-holder">{{ card.get('cardholder', 'Card Holder') }}</div>
+            </div>
             {% else %}
-              <li>No recent transactions</li>
+            <p class="empty-state">No cards added</p>
             {% endfor %}
-          </ul>
-          <a class="small-btn" href="{{ url_for('transactions_page') }}">View All</a>
-        </article>
+          </div>
+          <a href="{{ url_for('cards_page') }}" class="card-action-btn">Manage Cards</a>
+        </div>
 
-        <article class="card card-subscriptions">
-          <h3>Upcoming Subscriptions</h3>
-          <ul>
-            {% for s in subscriptions %}
-              <li>{{ s.name }} — ₹{{ s.amount }} (next: {{ s.next_payment_date }})</li>
+        <!-- Budget Card -->
+        <div class="dashboard-card budget-card">
+          <div class="card-header">
+            <h3>Budget</h3>
+            <select class="time-selector" id="budgetPeriod">
+              <option value="week">Week</option>
+              <option value="month" selected>Month</option>
+            </select>
+          </div>
+          <div class="budget-chart">
+            <canvas id="budgetChart"></canvas>
+          </div>
+          {% if user_limit %}
+          <div class="budget-info">
+            <span>Limit: ₹{{ "%.2f"|format(user_limit.get('limit', 0)) }}</span>
+            <span>Spent: ₹{{ "%.2f"|format(total_expense) }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Transaction History Card -->
+        <div class="dashboard-card transactions-card">
+          <div class="card-header">
+            <h3>Transaction History</h3>
+            <a href="{{ url_for('transactions_page') }}" class="view-all-link">View All</a>
+          </div>
+          <div class="transaction-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="income">Income</button>
+            <button class="filter-btn" data-filter="expense">Spending</button>
+          </div>
+          <div class="transactions-list">
+            {% for tx in recent_transactions[:5] %}
+            <div class="transaction-item" data-type="{{ tx.get('type', '') }}">
+              <div class="transaction-icon">
+                {% if tx.get('type') == 'income' %}
+                <i class='bx bx-trending-up'></i>
+                {% else %}
+                <i class='bx bx-trending-down'></i>
+                {% endif %}
+              </div>
+              <div class="transaction-details">
+                <div class="transaction-title">{{ tx.get('category') or tx.get('source') or tx.get('payee') or 'Transaction' }}</div>
+                <div class="transaction-date">{{ tx.get('date', '')[:10] if tx.get('date') else 'N/A' }}</div>
+              </div>
+              <div class="transaction-amount {% if tx.get('type') == 'expense' %}negative{% else %}positive{% endif %}">
+                {% if tx.get('type') == 'expense' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(tx.get('amount', 0)) }}
+              </div>
+            </div>
             {% else %}
-              <li>No active subscriptions</li>
+            <p class="empty-state">No transactions yet</p>
             {% endfor %}
-          </ul>
-          <a class="small-btn" href="{{ url_for('subscriptions_page') }}">Manage</a>
-        </article>
-      </section>
+          </div>
+        </div>
+
+        <!-- Subscriptions Card -->
+        <div class="dashboard-card subscriptions-card">
+          <div class="card-header">
+            <h3>Upcoming Subscriptions</h3>
+            <a href="{{ url_for('subscriptions_page') }}" class="view-all-link">View All</a>
+          </div>
+          <div class="subscriptions-list">
+            {% for sub in subscriptions[:4] %}
+            <div class="subscription-item">
+              <div class="subscription-name">{{ sub.get('name', 'Subscription') }}</div>
+              <div class="subscription-amount">₹{{ "%.2f"|format(sub.get('amount', 0)) }}</div>
+              <div class="subscription-date">Next: {{ sub.get('next_payment_date', 'N/A') }}</div>
+            </div>
+            {% else %}
+            <p class="empty-state">No active subscriptions</p>
+            {% endfor %}
+          </div>
+          <a href="{{ url_for('subscriptions_page') }}" class="card-action-btn">Manage Subscriptions</a>
+        </div>
+
+        <!-- Transaction Overview Card -->
+        <div class="dashboard-card overview-card">
+          <div class="card-header">
+            <h3>Transaction Overview</h3>
+          </div>
+          <div class="overview-stats">
+            <div class="stat-item">
+              <span class="stat-label">Transactions</span>
+              <span class="stat-value">{{ recent_transactions|length }}+</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Success Rate</span>
+              <span class="stat-value">100%</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Total Income</span>
+              <span class="stat-value">₹{{ "%.2f"|format(total_income) }}</span>
+            </div>
+          </div>
+          <div class="overview-chart">
+            <canvas id="overviewChart"></canvas>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
+
+  <script>
+    // Pass data to JavaScript
+    window.dashboardData = {
+      totalIncome: {{ total_income }},
+      totalExpense: {{ total_expense }},
+      balance: {{ balance }},
+      categorySpending: {{ category_spending|tojson }},
+      recentTransactions: {{ recent_transactions|tojson }}
+    };
+  </script>
 </body>
 </html>

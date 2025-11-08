@@ -1,34 +1,141 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Expense - Expenzo</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
-</head>
-<body>
-  {% include 'partials/navbar.html' %}
-  <main class="content">
-    <h2>Expense</h2>
-    <form id="addExpenseForm">
-      <input name="category" placeholder="Category (e.g. Groceries, Rent)" required>
-      <input name="amount" type="number" step="0.01" placeholder="Amount" required>
-      <input name="payee" placeholder="Payee (optional)">
-      <input name="date" type="date" placeholder="Date">
-      <input name="note" placeholder="Note (optional)">
-      <button type="submit">Add Expense</button>
-    </form>
+{% extends "base_dashboard.html" %}
 
-    <section>
-      <h3>Recent Expenses</h3>
-      <ul>
-        {% for e in expenses %}
-        <li>{{ e.category }} — ₹{{ e.amount }} ({{ e.date }})</li>
-        {% else %}
-        <li>No expenses yet</li>
-        {% endfor %}
-      </ul>
-    </section>
-  </main>
-</body>
-</html>
+{% block title %}Expense - Expenzo{% endblock %}
+
+{% block content %}
+      <header class="dashboard-header">
+        <h1>Expenses</h1>
+        <button class="add-btn" id="showAddExpenseForm">
+          <i class='bx bx-plus'></i> Add Expense
+        </button>
+      </header>
+
+      <!-- Add Expense Form -->
+      <div class="form-container" id="addExpenseFormContainer" style="display: none;">
+        <div class="form-card">
+          <h3>Add New Expense</h3>
+          <form id="addExpenseForm">
+            <div class="form-group">
+              <label>Category</label>
+              <select name="category" required>
+                <option value="">Select Category</option>
+                <option value="Food & Dining">Food & Dining</option>
+                <option value="Transport">Transport</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Bills & Utilities">Bills & Utilities</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Education">Education</option>
+                <option value="Travel">Travel</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" name="amount" step="0.01" placeholder="0.00" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Payee (Optional)</label>
+              <input type="text" name="payee" placeholder="e.g., Store name, Person name">
+            </div>
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" name="date" value="{{ date.today().isoformat() if date else '' }}">
+            </div>
+            <div class="form-group">
+              <label>Note (Optional)</label>
+              <textarea name="note" placeholder="Additional details..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Add Expense</button>
+              <button type="button" class="btn-secondary" id="cancelAddExpense">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Expense Summary -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-icon expense-icon">
+            <i class='bx bx-trending-down'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Expenses</div>
+            <div class="summary-value">₹{{ "%.2f"|format(total_expense) if total_expense else "0.00" }}</div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon count-icon">
+            <i class='bx bx-list-ul'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Records</div>
+            <div class="summary-value">{{ expenses|length }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense List -->
+      <div class="data-table-container">
+        <div class="table-header">
+          <h3>Expense History</h3>
+          <div class="table-filters">
+            <select class="filter-select" id="categoryFilter">
+              <option value="">All Categories</option>
+              <option value="Food & Dining">Food & Dining</option>
+              <option value="Transport">Transport</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Bills & Utilities">Bills & Utilities</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Education">Education</option>
+              <option value="Travel">Travel</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="text" class="search-input" placeholder="Search..." id="expenseSearch">
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Payee</th>
+                <th>Date</th>
+                <th>Note</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expenseTableBody">
+              {% for expense in expenses %}
+              <tr data-id="{{ expense._id }}" data-category="{{ expense.get('category', '') }}">
+                <td>
+                  <div class="category-cell">
+                    <span class="category-badge">{{ expense.get('category', 'N/A') }}</span>
+                  </div>
+                </td>
+                <td class="amount-cell negative">-₹{{ "%.2f"|format(expense.get('amount', 0)) }}</td>
+                <td>{{ expense.get('payee', '-') }}</td>
+                <td>{{ expense.get('date', 'N/A')[:10] if expense.get('date') else 'N/A' }}</td>
+                <td>{{ expense.get('note', '-') }}</td>
+                <td>
+                  <button class="btn-icon delete-expense" data-id="{{ expense._id }}" title="Delete">
+                    <i class='bx bx-trash'></i>
+                  </button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="empty-state">
+                  <i class='bx bx-inbox'></i>
+                  <p>No expense records yet. Add your first expense!</p>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+{% endblock %}

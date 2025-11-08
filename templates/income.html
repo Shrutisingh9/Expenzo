@@ -1,33 +1,113 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Income - Expenzo</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
-</head>
-<body>
-  {% include 'partials/navbar.html' %}
-  <main class="content">
-    <h2>Income</h2>
-    <form id="addIncomeForm">
-      <input name="source" placeholder="Source (e.g. salary, freelance)" required>
-      <input name="amount" type="number" step="0.01" placeholder="Amount" required>
-      <input name="date" type="date" placeholder="Date">
-      <input name="note" placeholder="Note (optional)">
-      <button type="submit">Add Income</button>
-    </form>
+{% extends "base_dashboard.html" %}
 
-    <section>
-      <h3>Recent Incomes</h3>
-      <ul>
-        {% for inc in incomes %}
-        <li>{{ inc.source }} — ₹{{ inc.amount }} ({{ inc.date }})</li>
-        {% else %}
-        <li>No income records yet</li>
-        {% endfor %}
-      </ul>
-    </section>
-  </main>
-</body>
-</html>
+{% block title %}Income - Expenzo{% endblock %}
+
+{% block content %}
+      <header class="dashboard-header">
+        <h1>Income</h1>
+        <button class="add-btn" id="showAddIncomeForm">
+          <i class='bx bx-plus'></i> Add Income
+        </button>
+      </header>
+
+      <!-- Add Income Form -->
+      <div class="form-container" id="addIncomeFormContainer" style="display: none;">
+        <div class="form-card">
+          <h3>Add New Income</h3>
+          <form id="addIncomeForm">
+            <div class="form-group">
+              <label>Source</label>
+              <input type="text" name="source" placeholder="e.g., Salary, Freelance, Business" required>
+            </div>
+            <div class="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" name="amount" step="0.01" placeholder="0.00" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" name="date" value="{{ date.today().isoformat() if date else '' }}">
+            </div>
+            <div class="form-group">
+              <label>Note (Optional)</label>
+              <textarea name="note" placeholder="Additional details..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Add Income</button>
+              <button type="button" class="btn-secondary" id="cancelAddIncome">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Income Summary -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-icon income-icon">
+            <i class='bx bx-trending-up'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Income</div>
+            <div class="summary-value">₹{{ "%.2f"|format(total_income) if total_income else "0.00" }}</div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon count-icon">
+            <i class='bx bx-list-ul'></i>
+          </div>
+          <div class="summary-info">
+            <div class="summary-label">Total Records</div>
+            <div class="summary-value">{{ incomes|length }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Income List -->
+      <div class="data-table-container">
+        <div class="table-header">
+          <h3>Income History</h3>
+          <div class="table-filters">
+            <input type="text" class="search-input" placeholder="Search by source..." id="incomeSearch">
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Note</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="incomeTableBody">
+              {% for income in incomes %}
+              <tr data-id="{{ income._id }}">
+                <td>
+                  <div class="source-cell">
+                    <i class='bx bx-money'></i>
+                    <span>{{ income.get('source', 'N/A') }}</span>
+                  </div>
+                </td>
+                <td class="amount-cell positive">+₹{{ "%.2f"|format(income.get('amount', 0)) }}</td>
+                <td>{{ income.get('date', 'N/A')[:10] if income.get('date') else 'N/A' }}</td>
+                <td>{{ income.get('note', '-') }}</td>
+                <td>
+                  <button class="btn-icon delete-income" data-id="{{ income._id }}" title="Delete">
+                    <i class='bx bx-trash'></i>
+                  </button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <i class='bx bx-inbox'></i>
+                  <p>No income records yet. Add your first income entry!</p>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+{% endblock %}

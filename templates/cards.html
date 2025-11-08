@@ -1,44 +1,90 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Cards - Expenzo</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script defer src="{{ url_for('static', filename='components.js') }}"></script>
-</head>
-<body>
-  {% include 'partials/navbar.html' %}
-  <main class="content">
-    <h2>Cards</h2>
+{% extends "base_dashboard.html" %}
 
-    <section class="add-card">
-      <h3>Add Card</h3>
-      <form id="addCardForm">
-        <input name="cardholder" placeholder="Cardholder name" required>
-        <input name="number" placeholder="Card number" required>
-        <div class="row">
-          <input name="exp_month" placeholder="MM" required>
-          <input name="exp_year" placeholder="YYYY" required>
-          <input name="brand" placeholder="Brand (Visa/Mastercard)" required>
+{% block title %}Cards - Expenzo{% endblock %}
+
+{% block content %}
+      <header class="dashboard-header">
+        <h1>Payment Cards</h1>
+        <button class="add-btn" id="showAddCardForm">
+          <i class='bx bx-plus'></i> Add Card
+        </button>
+      </header>
+
+      <!-- Add Card Form -->
+      <div class="card-form-container" id="addCardFormContainer" style="display: none;">
+        <div class="form-card">
+          <h3>Add New Card</h3>
+          <form id="addCardForm">
+            <div class="form-group">
+              <label>Cardholder Name</label>
+              <input type="text" name="cardholder" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+              <label>Card Number</label>
+              <input type="text" name="number" placeholder="1234 5678 9012 3456" maxlength="19" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Expiry Month</label>
+                <input type="number" name="exp_month" placeholder="MM" min="1" max="12" required>
+              </div>
+              <div class="form-group">
+                <label>Expiry Year</label>
+                <input type="number" name="exp_year" placeholder="YYYY" min="2024" required>
+              </div>
+              <div class="form-group">
+                <label>Brand</label>
+                <select name="brand" required>
+                  <option value="">Select Brand</option>
+                  <option value="Visa">Visa</option>
+                  <option value="Mastercard">Mastercard</option>
+                  <option value="RuPay">RuPay</option>
+                  <option value="American Express">American Express</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Add Card</button>
+              <button type="button" class="btn-secondary" id="cancelAddCard">Cancel</button>
+            </div>
+          </form>
         </div>
-        <button type="submit">Add Card</button>
-      </form>
-    </section>
+      </div>
 
-    <section class="list-cards">
-      <h3>Your Cards</h3>
-      <div id="cardsContainer">
-        {% for c in cards %}
-        <div class="card-item" data-id="{{ c._id }}">
-          <div>{{ c.cardholder }}</div>
-          <div>**** **** **** {{ c.number[-4:] }}</div>
-          <button class="btn-delete-card" data-id="{{ c._id }}">Delete</button>
+      <!-- Cards List -->
+      <div class="cards-grid">
+        {% for card in cards %}
+        <div class="card-display" data-id="{{ card._id }}">
+          <div class="card-visual {{ card.get('brand', '').lower() }}">
+            <div class="card-header-visual">
+              <div class="card-chip"></div>
+              <div class="card-brand-logo">{{ card.get('brand', 'Card') }}</div>
+            </div>
+            <div class="card-number-visual">{{ card.get('masked_number', '**** **** **** ' + card.get('last4', '----')) }}</div>
+            <div class="card-footer-visual">
+              <div>
+                <div class="card-label">Card Holder</div>
+                <div class="card-value">{{ card.get('cardholder', 'N/A') }}</div>
+              </div>
+              <div>
+                <div class="card-label">Expires</div>
+                <div class="card-value">{{ card.get('exp_month', 'MM') }}/{{ card.get('exp_year', 'YYYY') }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-delete-card" data-id="{{ card._id }}">
+              <i class='bx bx-trash'></i> Delete
+            </button>
+          </div>
         </div>
         {% else %}
-        <p>No cards added yet</p>
+        <div class="empty-state-card">
+          <i class='bx bx-credit-card-front'></i>
+          <h3>No Cards Added</h3>
+          <p>Add your first payment card to get started</p>
+          <button class="btn-primary" id="showAddCardFormEmpty">Add Card</button>
+        </div>
         {% endfor %}
       </div>
-    </section>
-  </main>
-</body>
-</html>
+{% endblock %}
