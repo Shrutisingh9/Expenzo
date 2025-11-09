@@ -250,9 +250,9 @@ def logout():
     if request.is_json or request.method == "POST":
         return jsonify({"message": "Logged out successfully!"}), 200
 
-    # ✅ Redirect for frontend
+    # ✅ Redirect for frontend - redirect to index so Get Started button appears
     flash("Logged out successfully!", "info")
-    return redirect(url_for("login"))  # ✅ correct
+    return redirect(url_for("index"))
 
 
 # -------------------- DASHBOARD (page + API) --------------------
@@ -999,6 +999,52 @@ def api_visualization_summary():
         "message": "Visualization data fetched successfully!",
         "summary": summary
     }), 200
+
+
+# -------------------- PROFILE --------------------
+@app.route("/profile")
+def profile_page():
+    """Render the user's profile page."""
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    user_id = session["user_id"]
+    
+    # Fetch user data from database
+    user = users_col.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+    
+    # Calculate user statistics
+    all_tx = list(transactions_col.find({"user_id": user_id}))
+    total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
+    total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
+    balance = total_income - total_expense
+    
+    # Count other stats
+    cards_count = cards_col.count_documents({"user_id": user_id})
+    subscriptions_count = subscriptions_col.count_documents({"user_id": user_id})
+    transactions_count = len(all_tx)
+    
+    # Format user data
+    user_data = {
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
+        "created_at": user.get("created_at", datetime.utcnow())
+    }
+    
+    return render_template(
+        "profile.html",
+        user=user_data,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        cards_count=cards_count,
+        subscriptions_count=subscriptions_count,
+        transactions_count=transactions_count,
+        active_page="profile"
+    )
 
 
 # -------------------- RUN --------------------

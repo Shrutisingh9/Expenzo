@@ -1,9 +1,17 @@
 <header class="top-header">
   <div class="left">
-    <a href="{{ url_for('dashboard') }}" class="brand">Expenzo</a>
+    <a href="{{ url_for('index') }}" class="brand">Expenzo</a>
   </div>
   <div class="right">
-    <span>{{ session.get('name') }}</span>
-    <a href="{{ url_for('logout') }}">Logout</a>
+    {% if session.get('user_id') %}
+      <!-- User is logged in - show profile icon -->
+      <a href="{{ url_for('profile_page') }}" class="profile-icon-link" title="Profile">
+        <i class='bx bx-user-circle'></i>
+        <span class="profile-name">{{ session.get('user_name', 'User') }}</span>
+      </a>
+    {% else %}
+      <!-- User is not logged in - show Get Started button -->
+      <a href="{{ url_for('register') }}" class="get-started-btn">Get Started</a>
+    {% endif %}
   </div>
 </header>

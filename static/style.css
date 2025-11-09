@@ -96,6 +96,41 @@ a {
   transform: scale(1.05);
 }
 
+.navbar .profile-icon-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #00796B;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.navbar .profile-icon-link:hover {
+  background: rgba(0, 172, 193, 0.15);
+  color: #004D40;
+}
+
+.navbar .profile-icon-link i {
+  font-size: 1.5rem;
+  color: #00ACC1;
+}
+
+.navbar .profile-name {
+  font-size: 0.9rem;
+}
+
+.navbar .logout-btn {
+  background: #f5576c;
+  color: white;
+}
+
+.navbar .logout-btn:hover {
+  background: #e63946;
+}
+
 
 /* .nav-left, .nav-right {
   display: flex;
@@ -139,6 +174,108 @@ a {
 
   .nav-right {
     margin-top: 10px;
+  }
+}
+
+/* Top Header (for dashboard pages) */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  background: linear-gradient(90deg, #E0F7FA, #B2EBF2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.top-header .left .brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #00695C;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.top-header .left .brand:hover {
+  color: #00ACC1;
+}
+
+.top-header .right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile-icon-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #00796B;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.profile-icon-link:hover {
+  background: rgba(0, 172, 193, 0.15);
+  color: #004D40;
+}
+
+.profile-icon-link i {
+  font-size: 1.8rem;
+  color: #00ACC1;
+}
+
+.profile-name {
+  font-size: 0.95rem;
+}
+
+.logout-link {
+  padding: 8px 16px;
+  background: #f5576c;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.logout-link:hover {
+  background: #e63946;
+  transform: translateY(-2px);
+}
+
+.get-started-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.get-started-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+@media (max-width: 768px) {
+  .top-header {
+    padding: 12px 20px;
+  }
+
+  .top-header .right {
+    gap: 12px;
+  }
+
+  .profile-name {
+    display: none;
   }
 }
 
