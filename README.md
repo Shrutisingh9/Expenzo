@@ -18,8 +18,8 @@
 
 ## Tech Stack
 
-- **Frontend:** HTML, CSS, JavaScript, Bootstrap  
-- **Backend:** Node.js, Express.js  
-- **Database:** MySQL (or PostgreSQL)  
-- **Hosting:** Render (Backend), Vercel (Frontend)  
-- **Libraries & Tools:** Chart.js (for graphs), JWT for authentication  
+- **Frontend:** HTML, CSS, JavaScript, Chart.js
+- **Backend:** Python, Flask
+- **Database:** MongoDB (via PyMongo)
+- **Authentication:** Flask Sessions, Flask-Bcrypt
+- **Libraries & Tools:** Chart.js (for graphs), Python-dotenv (for environment variables)

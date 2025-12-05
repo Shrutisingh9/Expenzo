@@ -7,16 +7,18 @@ from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
 from datetime import datetime, date, timedelta
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
 from dotenv import load_dotenv
 import os
-import ssl
-import certifi
+import traceback
 
 # -------------------- CONFIG --------------------
 load_dotenv()
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-app.secret_key = os.getenv("SECRET_KEY", "change_this_for_production")
+app.secret_key = os.getenv("SECRET_KEY")
+if not app.secret_key:
+    raise RuntimeError("SECRET_KEY not found in environment variables. Please set it in .env file for security.")
 bcrypt = Bcrypt(app)
 
 # -------------------- MONGO SETUP --------------------
@@ -24,96 +26,17 @@ MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI not found in environment (.env)")
 
-# Configure MongoDB client with proper SSL/TLS settings
-try:
-    # For MongoDB Atlas (mongodb+srv://), SSL is handled automatically
-    # For local MongoDB, we don't need SSL
-    if MONGO_URI.startswith("mongodb+srv://"):
-        # MongoDB Atlas connection - ensure connection string has proper format
-        # Add retryWrites and w=majority if not present
-        if "retryWrites" not in MONGO_URI:
-            separator = "&" if "?" in MONGO_URI else "?"
-            MONGO_URI = f"{MONGO_URI}{separator}retryWrites=true&w=majority"
-        
-        # MongoDB Atlas connection
-        # Note: mongodb+srv:// handles TLS automatically
-        # Python 3.13 has known SSL issues - certifi upgrade may help
-        client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=30000,
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000
-        )
-    else:
-        # Local MongoDB connection
-        client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
-            socketTimeoutMS=5000
-        )
-    
-    # Test the connection
-    client.admin.command('ping')
-    print("✅ Successfully connected to MongoDB!")
-    
-except Exception as e:
-    error_msg = str(e)
-    print(f"❌ MongoDB connection error: {error_msg}")
-    print("\n" + "="*60)
-    print("TROUBLESHOOTING GUIDE:")
-    print("="*60)
-    print("\n1. CHECK YOUR CONNECTION STRING:")
-    print("   - Should start with: mongodb+srv://")
-    print("   - Format: mongodb+srv://username:password@cluster.mongodb.net/database")
-    print("   - Make sure password is URL-encoded if it contains special characters")
-    print("\n2. MONGODB ATLAS SETUP:")
-    print("   - Go to MongoDB Atlas Dashboard")
-    print("   - Network Access → Add IP Address → Allow Access from Anywhere (0.0.0.0/0)")
-    print("   - Database Access → Verify username and password")
-    print("\n3. CONNECTION STRING EXAMPLE:")
-    print("   MONGO_URI=mongodb+srv://myuser:mypassword@cluster0.xxxxx.mongodb.net/expenzo?retryWrites=true&w=majority")
-    print("\n4. IF STILL FAILING:")
-    print("   - Try using local MongoDB: mongodb://localhost:27017/")
-    print("   - Check if your firewall/antivirus is blocking the connection")
-    print("   - Verify your internet connection")
-    print("="*60)
-    
-    # Don't raise - allow app to start but operations will fail
-    # This way user can see the error message and fix it
-    print("\n⚠️  App will start but database operations will fail until connection is fixed.\n")
-    client = None  # Set to None so we can check later
+client = MongoClient(MONGO_URI)
+db = client.get_database(os.getenv("DB_NAME", "expen"))
 
-# Only set up database if connection succeeded
-if client:
-    db = client.get_database(os.getenv("DB_NAME", "expen"))
-    
-    # collections
-    users_col = db["users"]
-    transactions_col = db["transactions"]
-    cards_col = db["cards"]
-    subscriptions_col = db["subscriptions"]
-    limits_col = db["limits"]
-else:
-    # Create dummy collections to prevent errors
-    db = None
-    users_col = None
-    transactions_col = None
-    cards_col = None
-    subscriptions_col = None
-    limits_col = None
+# collections
+users_col = db["users"]
+transactions_col = db["transactions"]
+cards_col = db["cards"]
+subscriptions_col = db["subscriptions"]
+limits_col = db["limits"]
 
 # -------------------- HELPERS --------------------
-def check_db_connection():
-    """Check if database connection is available."""
-    if not client or not db:
-        return False
-    try:
-        client.admin.command('ping')
-        return True
-    except:
-        return False
-
 def json_or_form(req):
     """Return dict from JSON body or form data."""
     if req.is_json:
@@ -147,47 +70,32 @@ def features():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        try:
-            data = request.get_json(silent=True) or request.form
-            name = data.get("name")
-            email = data.get("email")
-            password = data.get("password")
+        data = request.get_json(silent=True) or request.form
+        name = data.get("name")
+        email = data.get("email")
+        password = data.get("password")
 
-            if not name or not email or not password:
-                return jsonify({"error": "All fields are required"}), 400
+        if not name or not email or not password:
+            return jsonify({"error": "All fields are required"}), 400
 
-            # Check if user exists
-            if users_col.find_one({"email": email}):
-                return jsonify({"error": "User already exists"}), 400
+        if db.users.find_one({"email": email}):
+            return jsonify({"error": "User already exists"}), 400
 
-            hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
-            result = users_col.insert_one({
-                "name": name,
-                "email": email,
-                "password": hashed_pw,
-                "created_at": datetime.utcnow()
-            })
-            
-            # Automatically log in the user after registration
-            session["user_id"] = str(result.inserted_id)
-            session["user_name"] = name
+        hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
+        db.users.insert_one({
+            "name": name,
+            "email": email,
+            "password": hashed_pw,
+            "created_at": datetime.utcnow()
+        })
 
-            # ✅ Always return JSON if the request is from JS
-            if request.is_json:
-                return jsonify({
-                    "message": "User registered successfully!",
-                    "redirect": "/dashboard"
-                }), 201
+        # ✅ Always return JSON if the request is from JS
+        if request.is_json:
+            return jsonify({"message": "User registered successfully!"}), 201
 
-            # ✅ For form-based submission (HTML)
-            flash("Registration successful! Welcome!", "success")
-            return redirect(url_for("dashboard"))
-        except Exception as e:
-            # Handle MongoDB connection errors
-            error_msg = str(e)
-            if "ServerSelectionTimeoutError" in error_msg or "SSL" in error_msg:
-                return jsonify({"error": "Database connection failed. Please check your MongoDB connection settings."}), 503
-            return jsonify({"error": f"Registration failed: {error_msg}"}), 500
+        # ✅ For form-based submission (HTML)
+        flash("Registration successful! Please log in.", "success")
+        return redirect(url_for("login"))
 
     # ✅ If it's a GET (for browser)
     if request.is_json:
@@ -195,44 +103,31 @@ def register():
 
     return render_template("register.html")
 
-
-
-
 # ✅ LOGIN (works for both frontend + Postman)
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        try:
-            data = request.get_json(silent=True) or request.form
-            email = data.get("email")
-            password = data.get("password")
+        data = request.get_json(silent=True) or request.form
+        email = data.get("email")
+        password = data.get("password")
 
-            user = users_col.find_one({"email": email})
-            if user and bcrypt.check_password_hash(user["password"], password):
-                session["user_id"] = str(user["_id"])
-                session["user_name"] = user.get("name", "")
+        user = db.users.find_one({"email": email})
+        if user and bcrypt.check_password_hash(user["password"], password):
+            session["user_id"] = str(user["_id"])
+            session["user_name"] = user.get("name", "")
 
-                if request.is_json:
-                    return jsonify({"message": "Login successful!"}), 200
-
-                flash("Login successful!", "success")
-                return redirect(url_for("dashboard"))
-
-            # ✅ Handle invalid creds in both JSON and form mode
             if request.is_json:
-                return jsonify({"error": "Invalid email or password"}), 401
+                return jsonify({"message": "Login successful!"}), 200
 
-            flash("Invalid email or password", "error")
-            return redirect(url_for("login"))
-        except Exception as e:
-            # Handle MongoDB connection errors
-            error_msg = str(e)
-            if "ServerSelectionTimeoutError" in error_msg or "SSL" in error_msg:
-                if request.is_json:
-                    return jsonify({"error": "Database connection failed. Please check your MongoDB connection settings."}), 503
-                flash("Database connection error. Please try again later.", "error")
-                return redirect(url_for("login"))
-            raise
+            flash("Login successful!", "success")
+            return redirect(url_for("dashboard"))
+
+        # ✅ Handle invalid creds in both JSON and form mode
+        if request.is_json:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        flash("Invalid email or password", "error")
+        return redirect(url_for("login"))
 
     if request.is_json:
         return jsonify({"error": "GET not allowed"}), 405
@@ -250,108 +145,210 @@ def logout():
     if request.is_json or request.method == "POST":
         return jsonify({"message": "Logged out successfully!"}), 200
 
-    # ✅ Redirect for frontend - redirect to index so Get Started button appears
+    # ✅ Redirect for frontend
     flash("Logged out successfully!", "info")
-    return redirect(url_for("index"))
+    return redirect(url_for("login"))  # ✅ correct
 
 
 # -------------------- DASHBOARD (page + API) --------------------
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
-    if "user_id" not in session:
-        # 🔹 If Postman or JSON request → return JSON instead of redirect
+    try:
+        if "user_id" not in session:
+            # 🔹 If Postman or JSON request → return JSON instead of redirect
+            if request.is_json or request.headers.get("Accept") == "application/json":
+                return jsonify({"error": "Unauthorized. Please log in first."}), 401
+            return redirect(url_for("login"))
+
+        user_id = session["user_id"]
+
+        # Query user-specific data with error handling
+        try:
+            cards = list(cards_col.find({"user_id": user_id}))
+            recent_transactions = list(transactions_col.find({"user_id": user_id}).sort("created_at", -1).limit(6))
+            subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1).limit(6))
+            user_limit = limits_col.find_one({"user_id": user_id})
+        except Exception as e:
+            print(f"Database query error in dashboard: {str(e)}")
+            print(traceback.format_exc())
+            cards = []
+            recent_transactions = []
+            subs = []
+            user_limit = None
+
+        # Compute totals with error handling
+        try:
+            all_tx = list(transactions_col.find({"user_id": user_id}))
+            total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
+            total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
+            balance = total_income - total_expense
+            
+            # Calculate category spending for expenses
+            category_spending = {}
+            for t in all_tx:
+                if t.get("type") == "expense":
+                    category = t.get("category") or "Other"
+                    try:
+                        amount = float(t.get("amount", 0))
+                        category_spending[category] = category_spending.get(category, 0) + amount
+                    except (ValueError, TypeError):
+                        continue
+        except Exception as e:
+            print(f"Error calculating totals in dashboard: {str(e)}")
+            print(traceback.format_exc())
+            total_income = 0.0
+            total_expense = 0.0
+            balance = 0.0
+            category_spending = {}
+
+        # Convert ObjectIds for JSON with error handling
+        try:
+            for c in cards:
+                if "_id" in c and c["_id"]:
+                    c["_id"] = str(c["_id"])
+            for t in recent_transactions:
+                if "_id" in t and t["_id"]:
+                    t["_id"] = str(t["_id"])
+            for s in subs:
+                if "_id" in s and s["_id"]:
+                    s["_id"] = str(s["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in dashboard: {str(e)}")
+            print(traceback.format_exc())
+
+        # 🔹 If JSON request (Postman)
         if request.is_json or request.headers.get("Accept") == "application/json":
-            return jsonify({"error": "Unauthorized. Please log in first."}), 401
-        return redirect(url_for("login"))
+            return jsonify({
+                "message": "Dashboard data fetched successfully!",
+                "data": {
+                    "cards": cards,
+                    "recent_transactions": recent_transactions,
+                    "subscriptions": subs,
+                    "limit": user_limit,
+                    "total_income": total_income,
+                    "total_expense": total_expense,
+                    "balance": balance
+                }
+            }), 200
 
-    user_id = session["user_id"]
-
-    # Query user-specific data
-    cards = list(cards_col.find({"user_id": user_id}))
-    recent_transactions = list(transactions_col.find({"user_id": user_id}).sort("created_at", -1).limit(6))
-    subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1).limit(6))
-    user_limit = limits_col.find_one({"user_id": user_id})
-    if user_limit:
-        user_limit["_id"] = str(user_limit["_id"])
-
-    # Compute totals and category breakdown
-    all_tx = list(transactions_col.find({"user_id": user_id}))
-    total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
-    total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
-    balance = total_income - total_expense
-    
-    # Calculate spending by category
-    category_spending = {}
-    for t in all_tx:
-        if t.get("type") == "expense":
-            category = t.get("category", "Other")
-            category_spending[category] = category_spending.get(category, 0) + float(t.get("amount", 0))
-    
-    # Get recent income and expenses separately
-    recent_income = list(transactions_col.find({"user_id": user_id, "type": "income"}).sort("created_at", -1).limit(5))
-    recent_expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}).sort("created_at", -1).limit(5))
-    
-    for i in recent_income:
-        i["_id"] = str(i["_id"])
-    for e in recent_expenses:
-        e["_id"] = str(e["_id"])
-
-    # Convert ObjectIds for JSON
-    for c in cards:
-        c["_id"] = str(c["_id"])
-    for t in recent_transactions:
-        t["_id"] = str(t["_id"])
-    for s in subs:
-        s["_id"] = str(s["_id"])
-
-    # 🔹 If JSON request (Postman)
-    if request.is_json or request.headers.get("Accept") == "application/json":
-        return jsonify({
-            "message": "Dashboard data fetched successfully!",
-            "data": {
-                "cards": cards,
-                "recent_transactions": recent_transactions,
-                "subscriptions": subs,
-                "limit": user_limit,
-                "total_income": total_income,
-                "total_expense": total_expense,
-                "balance": balance
+        # 🔹 Otherwise (Browser) → render HTML
+        try:
+            # Ensure all variables have safe defaults
+            try:
+                total_income_val = float(total_income) if total_income is not None else 0.0
+            except (ValueError, TypeError):
+                total_income_val = 0.0
+            
+            try:
+                total_expense_val = float(total_expense) if total_expense is not None else 0.0
+            except (ValueError, TypeError):
+                total_expense_val = 0.0
+            
+            try:
+                balance_val = float(balance) if balance is not None else 0.0
+            except (ValueError, TypeError):
+                balance_val = 0.0
+            
+            template_vars = {
+                "cards": cards if cards else [],
+                "recent_transactions": recent_transactions if recent_transactions else [],
+                "subscriptions": subs if subs else [],
+                "user_limit": user_limit,
+                "total_income": total_income_val,
+                "total_expense": total_expense_val,
+                "balance": balance_val,
+                "category_spending": category_spending if category_spending else {},
+                "user_name": session.get("user_name", "User")
             }
-        }), 200
-
-    # 🔹 Otherwise (Browser) → render HTML
-    return render_template(
-        "dashboard.html",
-        cards=cards,
-        recent_transactions=recent_transactions,
-        subscriptions=subs,
-        limit=user_limit,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        user_name=session.get("user_name", ""),
-        category_spending=category_spending,
-        recent_income=recent_income,
-        recent_expenses=recent_expenses,
-        active_page="dashboard"
-    )
+            return render_template("dashboard.html", **template_vars)
+        except Exception as template_error:
+            print("=" * 50)
+            print("TEMPLATE RENDERING ERROR IN DASHBOARD")
+            print("=" * 50)
+            print(f"Template Error: {str(template_error)}")
+            print(traceback.format_exc())
+            print("=" * 50)
+            # Return a simple error page instead of redirecting
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Dashboard Error</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                    h1 {{ color: #e74c3c; }}
+                    pre {{ background: #f4f4f4; padding: 20px; text-align: left; overflow-x: auto; }}
+                </style>
+            </head>
+            <body>
+                <h1>Dashboard Error</h1>
+                <p>An error occurred while rendering the dashboard.</p>
+                <p><strong>Error:</strong> {str(template_error)}</p>
+                <pre>{traceback.format_exc()}</pre>
+                <p><a href="/login">Return to Login</a></p>
+            </body>
+            </html>
+            """, 500
+    except Exception as e:
+        print("=" * 50)
+        print("ERROR IN DASHBOARD ROUTE")
+        print("=" * 50)
+        print(f"Error: {str(e)}")
+        print(traceback.format_exc())
+        print("=" * 50)
+        # Return error page with details
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Dashboard Error</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                h1 {{ color: #e74c3c; }}
+                pre {{ background: #f4f4f4; padding: 20px; text-align: left; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <h1>Dashboard Error</h1>
+            <p>An error occurred while loading the dashboard.</p>
+            <p><strong>Error:</strong> {str(e)}</p>
+            <pre>{traceback.format_exc()}</pre>
+            <p><a href="/login">Return to Login</a></p>
+        </body>
+        </html>
+        """, 500
 # -------------------- CARDS --------------------
 @app.route("/cards")
 def cards_page():
     """Render the user's saved cards in the dashboard UI."""
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
 
-    user_id = session["user_id"]
+        user_id = session["user_id"]
 
-    # Fetch user's cards (newest first)
-    cards = list(cards_col.find({"user_id": user_id}).sort("created_at", -1))
+        # Fetch user's cards (newest first) with error handling
+        try:
+            cards = list(cards_col.find({"user_id": user_id}).sort("created_at", -1))
+        except Exception as e:
+            print(f"Database error in cards_page: {str(e)}")
+            print(traceback.format_exc())
+            cards = []
 
-    # Convert ObjectIds to strings for rendering
-    for c in cards:
-        c["_id"] = str(c["_id"])
+        # Convert ObjectIds to strings for rendering
+        try:
+            for c in cards:
+                if "_id" in c and c["_id"]:
+                    c["_id"] = str(c["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in cards_page: {str(e)}")
 
-    return render_template("cards.html", cards=cards, active_page="cards")
+        return render_template("cards.html", cards=cards if cards else [])
+    except Exception as e:
+        print(f"Error in cards_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading cards. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 @app.route("/api/cards", methods=["POST"])
 def api_create_card():
@@ -416,19 +413,25 @@ def api_create_card():
 # ✅ GET - View all cards
 @app.route("/api/cards", methods=["GET"])
 def api_get_cards():
-    if "user_id" not in session:
-        return jsonify({"error": "auth required"}), 403
+    try:
+        if "user_id" not in session:
+            return jsonify({"error": "auth required"}), 403
 
-    user_id = session["user_id"]
-    cards = list(cards_col.find({"user_id": user_id}))
-    for c in cards:
-        c["_id"] = str(c["_id"])
-        # mask card number for security
-        if "number" in c:
-            c["masked_number"] = "**** **** **** " + str(c["number"])[-4:]
-            del c["number"]
+        user_id = session["user_id"]
+        cards = list(cards_col.find({"user_id": user_id}))
+        for c in cards:
+            if "_id" in c and c["_id"]:
+                c["_id"] = str(c["_id"])
+            # mask card number for security
+            if "number" in c:
+                c["masked_number"] = "**** **** **** " + str(c["number"])[-4:]
+                del c["number"]
 
-    return jsonify({"success": True, "cards": cards}), 200
+        return jsonify({"success": True, "cards": cards}), 200
+    except Exception as e:
+        print(f"Error in api_get_cards: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({"error": "Failed to fetch cards"}), 500
 
 # ✅ DELETE - Remove a card
 @app.route("/api/cards/<card_id>", methods=["DELETE"])
@@ -455,18 +458,34 @@ def api_delete_card(card_id):
 # -------------------- INCOME --------------------
 @app.route("/income")
 def income_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    user_id = session["user_id"]
-    incomes = list(transactions_col.find({"user_id": user_id, "type": "income"}).sort("created_at", -1).limit(200))
-    for i in incomes:
-        i["_id"] = str(i["_id"])
-    
-    # Calculate total income
-    all_income = list(transactions_col.find({"user_id": user_id, "type": "income"}))
-    total_income = sum(float(t.get("amount", 0)) for t in all_income)
-    
-    return render_template("income.html", incomes=incomes, total_income=total_income, active_page="income")
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        
+        # Fetch incomes with error handling
+        try:
+            incomes = list(transactions_col.find({"user_id": user_id, "type": "income"}).sort("created_at", -1).limit(50))
+        except Exception as e:
+            print(f"Database error in income_page: {str(e)}")
+            print(traceback.format_exc())
+            incomes = []
+        
+        # Convert ObjectIds to strings
+        try:
+            for i in incomes:
+                if "_id" in i and i["_id"]:
+                    i["_id"] = str(i["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in income_page: {str(e)}")
+        
+        return render_template("income.html", incomes=incomes if incomes else [])
+    except Exception as e:
+        print(f"Error in income_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading income. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 
 @app.route("/api/income", methods=["POST"])
@@ -526,18 +545,34 @@ def api_delete_income(income_id):
 # -------------------- EXPENSE --------------------
 @app.route("/expense")
 def expense_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    user_id = session["user_id"]
-    expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}).sort("created_at", -1).limit(200))
-    for e in expenses:
-        e["_id"] = str(e["_id"])
-    
-    # Calculate total expense
-    all_expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}))
-    total_expense = sum(float(t.get("amount", 0)) for t in all_expenses)
-    
-    return render_template("expense.html", expenses=expenses, total_expense=total_expense, active_page="expense")
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        
+        # Fetch expenses with error handling
+        try:
+            expenses = list(transactions_col.find({"user_id": user_id, "type": "expense"}).sort("created_at", -1).limit(50))
+        except Exception as e:
+            print(f"Database error in expense_page: {str(e)}")
+            print(traceback.format_exc())
+            expenses = []
+        
+        # Convert ObjectIds to strings
+        try:
+            for e in expenses:
+                if "_id" in e and e["_id"]:
+                    e["_id"] = str(e["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in expense_page: {str(e)}")
+        
+        return render_template("expense.html", expenses=expenses if expenses else [])
+    except Exception as e:
+        print(f"Error in expense_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading expenses. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 
 @app.route("/api/expense", methods=["POST"])
@@ -602,43 +637,93 @@ def api_delete_expense(expense_id):
 # -------------------- TRANSACTIONS --------------------
 @app.route("/transactions")
 def transactions_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    user_id = session["user_id"]
-    txs = list(transactions_col.find({"user_id": user_id})
-               .sort("created_at", -1)
-               .limit(200))
-    
-    # Calculate totals
-    all_txs = list(transactions_col.find({"user_id": user_id}))
-    total_income = sum(float(t.get("amount", 0)) for t in all_txs if t.get("type") == "income")
-    total_expense = sum(float(t.get("amount", 0)) for t in all_txs if t.get("type") == "expense")
-    net_balance = total_income - total_expense
-    
-    for t in txs:
-        t["_id"] = str(t["_id"])
-    
-    return render_template(
-        "transactions.html", 
-        transactions=txs, 
-        total_income=total_income,
-        total_expense=total_expense,
-        net_balance=net_balance,
-        active_page="transactions"
-    )
+    try:
+        print("=" * 50)
+        print("TRANSACTIONS PAGE CALLED")
+        print("=" * 50)
+        if "user_id" not in session:
+            print("No user_id in session, redirecting to login")
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        print(f"User ID: {user_id}")
+        
+        # Fetch transactions with error handling
+        try:
+            txs = list(transactions_col.find({"user_id": user_id})
+                       .sort("created_at", -1)
+                       .limit(200))
+            print(f"Found {len(txs)} transactions")
+        except Exception as e:
+            print(f"Database error in transactions_page: {str(e)}")
+            print(traceback.format_exc())
+            txs = []
+        
+        # Convert ObjectIds to strings
+        try:
+            for t in txs:
+                if "_id" in t and t["_id"]:
+                    t["_id"] = str(t["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in transactions_page: {str(e)}")
+        
+        print("Rendering transactions.html template...")
+        try:
+            result = render_template("transactions.html", transactions=txs if txs else [])
+            print("Template rendered successfully")
+            return result
+        except Exception as template_error:
+            print("=" * 50)
+            print("TEMPLATE RENDERING ERROR IN TRANSACTIONS PAGE")
+            print("=" * 50)
+            print(f"Template Error: {str(template_error)}")
+            print(traceback.format_exc())
+            print("=" * 50)
+            flash(f"Template error: {str(template_error)}", "error")
+            # Don't redirect, show error page instead
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Transactions Error</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; padding: 50px; }}
+                    h1 {{ color: #e74c3c; }}
+                    pre {{ background: #f4f4f4; padding: 20px; overflow-x: auto; }}
+                </style>
+            </head>
+            <body>
+                <h1>Transactions Page Error</h1>
+                <p><strong>Error:</strong> {str(template_error)}</p>
+                <pre>{traceback.format_exc()}</pre>
+                <p><a href="/dashboard">Return to Dashboard</a></p>
+            </body>
+            </html>
+            """, 500
+    except Exception as e:
+        print(f"Error in transactions_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading transactions. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 
 # ✅ Get all transactions (for Postman)
 @app.route("/api/transactions", methods=["GET"])
 def api_get_all_transactions():
-    if "user_id" not in session:
-        return jsonify({"error": "auth required"}), 403
-    
-    txs = list(transactions_col.find({"user_id": session["user_id"]}).sort("created_at", -1))
-    for t in txs:
-        t["_id"] = str(t["_id"])
-    return jsonify({"success": True, "transactions": txs}), 200
+    try:
+        if "user_id" not in session:
+            return jsonify({"error": "auth required"}), 403
+        
+        user_id = session["user_id"]
+        txs = list(transactions_col.find({"user_id": user_id}).sort("created_at", -1))
+        for t in txs:
+            if "_id" in t and t["_id"]:
+                t["_id"] = str(t["_id"])
+        return jsonify({"success": True, "transactions": txs}), 200
+    except Exception as e:
+        print(f"Error in api_get_all_transactions: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({"error": "Failed to fetch transactions"}), 500
 
 
 # ✅ Get or Delete specific transaction
@@ -669,14 +754,64 @@ def api_transaction_detail(tx_id):
 # -------------------- LIMITS --------------------
 @app.route("/limits")
 def limits_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    limit = limits_col.find_one({"user_id": session["user_id"]})
-    if limit:
-        limit["_id"] = str(limit["_id"])
-    
-    return render_template("limits.html", limit=limit, active_page="limits")
+    try:
+        print("=" * 50)
+        print("LIMITS PAGE CALLED")
+        print("=" * 50)
+        if "user_id" not in session:
+            print("No user_id in session, redirecting to login")
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        print(f"User ID: {user_id}")
+        
+        # Fetch limit with error handling
+        try:
+            limit = limits_col.find_one({"user_id": user_id})
+            print(f"Limit found: {limit}")
+        except Exception as e:
+            print(f"Database error in limits_page: {str(e)}")
+            print(traceback.format_exc())
+            limit = None
+        
+        print("Rendering limits.html template...")
+        try:
+            result = render_template("limits.html", limit=limit)
+            print("Template rendered successfully")
+            return result
+        except Exception as template_error:
+            print("=" * 50)
+            print("TEMPLATE RENDERING ERROR IN LIMITS PAGE")
+            print("=" * 50)
+            print(f"Template Error: {str(template_error)}")
+            print(traceback.format_exc())
+            print("=" * 50)
+            flash(f"Template error: {str(template_error)}", "error")
+            # Don't redirect, show error page instead
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Limits Error</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; padding: 50px; }}
+                    h1 {{ color: #e74c3c; }}
+                    pre {{ background: #f4f4f4; padding: 20px; overflow-x: auto; }}
+                </style>
+            </head>
+            <body>
+                <h1>Limits Page Error</h1>
+                <p><strong>Error:</strong> {str(template_error)}</p>
+                <pre>{traceback.format_exc()}</pre>
+                <p><a href="/dashboard">Return to Dashboard</a></p>
+            </body>
+            </html>
+            """, 500
+    except Exception as e:
+        print(f"Error in limits_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading limits. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 
 # ✅ Get current user's limit
@@ -716,11 +851,12 @@ def api_set_limit():
     if existing:
         limits_col.update_one({"user_id": session["user_id"]}, {"$set": doc})
         message = "Limit updated successfully"
+        doc["_id"] = str(existing["_id"])
     else:
-        limits_col.insert_one(doc)
+        res = limits_col.insert_one(doc)
         message = "Limit set successfully"
-
-    doc["_id"] = str(existing["_id"]) if existing else str(limits_col.find_one({"user_id": session["user_id"]})["_id"])
+        doc["_id"] = str(res.inserted_id)
+    
     return jsonify({"success": True, "message": message, "limit": doc}), 200
 
 # ✅ DELETE: Remove user's limit
@@ -740,13 +876,34 @@ def api_delete_limit():
 # -------------------- SUBSCRIPTIONS --------------------
 @app.route("/subscriptions")
 def subscriptions_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    user_id = session["user_id"]
-    subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1))
-    for s in subs:
-        s["_id"] = str(s["_id"])
-    return render_template("subscriptions.html", subscriptions=subs, active_page="subscriptions")
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        
+        # Fetch subscriptions with error handling
+        try:
+            subs = list(subscriptions_col.find({"user_id": user_id}).sort("next_payment_date", 1))
+        except Exception as e:
+            print(f"Database error in subscriptions_page: {str(e)}")
+            print(traceback.format_exc())
+            subs = []
+        
+        # Convert ObjectIds to strings
+        try:
+            for s in subs:
+                if "_id" in s and s["_id"]:
+                    s["_id"] = str(s["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in subscriptions_page: {str(e)}")
+        
+        return render_template("subscriptions.html", subscriptions=subs if subs else [])
+    except Exception as e:
+        print(f"Error in subscriptions_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading subscriptions. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 
 # ---------- CREATE SUBSCRIPTION ----------
@@ -920,43 +1077,69 @@ def api_upcoming_subscriptions():
 # -------------------- VISUALIZATION --------------------
 @app.route("/visualization")
 def visualization_page():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    user_id = session["user_id"]
-    txs = list(transactions_col.find({"user_id": user_id}))
-    
-    # Calculate summary data
-    total_income = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "income")
-    total_expense = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "expense")
-    
-    # Category breakdown
-    category_expenses = {}
-    for t in txs:
-        if t.get("type") == "expense":
-            category = t.get("category", "Other")
-            category_expenses[category] = category_expenses.get(category, 0) + float(t.get("amount", 0))
-    
-    # Income sources
-    income_sources = {}
-    for t in txs:
-        if t.get("type") == "income":
-            source = t.get("source", "Other")
-            income_sources[source] = income_sources.get(source, 0) + float(t.get("amount", 0))
-    
-    # Convert ObjectIds in transactions for JSON serialization
-    for tx in txs:
-        tx["_id"] = str(tx["_id"])
-    
-    return render_template(
-        "visualization.html",
-        total_income=total_income,
-        total_expense=total_expense,
-        category_expenses=category_expenses,
-        income_sources=income_sources,
-        transactions=txs,
-        active_page="visualization"
-    )
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        
+        # Get all transactions for visualization with error handling
+        try:
+            txs = list(transactions_col.find({"user_id": user_id}))
+        except Exception as e:
+            print(f"Database error in visualization_page: {str(e)}")
+            print(traceback.format_exc())
+            txs = []
+        
+        # Calculate totals with error handling
+        try:
+            total_income = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "income")
+            total_expense = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "expense")
+        except Exception as e:
+            print(f"Error calculating totals in visualization_page: {str(e)}")
+            total_income = 0.0
+            total_expense = 0.0
+        
+        # Calculate category expenses with error handling
+        category_expenses = {}
+        income_sources = {}
+        
+        try:
+            for t in txs:
+                try:
+                    amt = float(t.get("amount", 0))
+                    if t.get("type") == "expense":
+                        category = t.get("category") or "Other"
+                        category_expenses[category] = category_expenses.get(category, 0) + amt
+                    elif t.get("type") == "income":
+                        source = t.get("source") or "Other"
+                        income_sources[source] = income_sources.get(source, 0) + amt
+                except (ValueError, TypeError):
+                    continue
+        except Exception as e:
+            print(f"Error calculating categories in visualization_page: {str(e)}")
+        
+        # Convert ObjectIds for JSON
+        try:
+            for t in txs:
+                if "_id" in t and t["_id"]:
+                    t["_id"] = str(t["_id"])
+        except Exception as e:
+            print(f"Error converting ObjectIds in visualization_page: {str(e)}")
+        
+        return render_template(
+            "visualization.html",
+            total_income=total_income,
+            total_expense=total_expense,
+            category_expenses=category_expenses if category_expenses else {},
+            income_sources=income_sources if income_sources else {},
+            transactions=txs if txs else []
+        )
+    except Exception as e:
+        print(f"Error in visualization_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading visualization. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
 @app.route("/api/visualization/summary", methods=["GET"])
 def api_visualization_summary():
@@ -1004,50 +1187,133 @@ def api_visualization_summary():
 # -------------------- PROFILE --------------------
 @app.route("/profile")
 def profile_page():
-    """Render the user's profile page."""
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    
-    user_id = session["user_id"]
-    
-    # Fetch user data from database
-    user = users_col.find_one({"_id": ObjectId(user_id)})
-    if not user:
-        session.clear()
-        return redirect(url_for("login"))
-    
-    # Calculate user statistics
-    all_tx = list(transactions_col.find({"user_id": user_id}))
-    total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
-    total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
-    balance = total_income - total_expense
-    
-    # Count other stats
-    cards_count = cards_col.count_documents({"user_id": user_id})
-    subscriptions_count = subscriptions_col.count_documents({"user_id": user_id})
-    transactions_count = len(all_tx)
-    
-    # Format user data
-    user_data = {
-        "name": user.get("name", ""),
-        "email": user.get("email", ""),
-        "created_at": user.get("created_at", datetime.utcnow())
-    }
-    
-    return render_template(
-        "profile.html",
-        user=user_data,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        cards_count=cards_count,
-        subscriptions_count=subscriptions_count,
-        transactions_count=transactions_count,
-        active_page="profile"
-    )
+    try:
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        
+        user_id = session["user_id"]
+        
+        # Get user data with error handling
+        try:
+            user = users_col.find_one({"_id": ObjectId(user_id)})
+        except (InvalidId, ValueError, Exception) as e:
+            print(f"Error in profile_page (ObjectId conversion): {str(e)}")
+            print(traceback.format_exc())
+            flash("Invalid user session. Please log in again.", "error")
+            session.clear()
+            return redirect(url_for("login"))
+        
+        if not user:
+            flash("User not found", "error")
+            session.clear()
+            return redirect(url_for("login"))
+        
+        # Get user statistics with error handling
+        try:
+            all_tx = list(transactions_col.find({"user_id": user_id}))
+            total_income = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "income")
+            total_expense = sum(float(t.get("amount", 0)) for t in all_tx if t.get("type") == "expense")
+            balance = total_income - total_expense
+        except Exception as e:
+            print(f"Error calculating statistics in profile_page: {str(e)}")
+            print(traceback.format_exc())
+            all_tx = []
+            total_income = 0.0
+            total_expense = 0.0
+            balance = 0.0
+        
+        # Get counts with error handling
+        try:
+            cards_count = cards_col.count_documents({"user_id": user_id})
+            subscriptions_count = subscriptions_col.count_documents({"user_id": user_id})
+            transactions_count = len(all_tx)
+        except Exception as e:
+            print(f"Error getting counts in profile_page: {str(e)}")
+            cards_count = 0
+            subscriptions_count = 0
+            transactions_count = 0
+        
+        # Convert ObjectId to string for template (if needed)
+        try:
+            if "_id" in user:
+                user["_id"] = str(user["_id"])
+        except Exception as e:
+            print(f"Error converting user ObjectId in profile_page: {str(e)}")
+        
+        return render_template(
+            "profile.html",
+            user=user,
+            total_income=total_income,
+            total_expense=total_expense,
+            balance=balance,
+            cards_count=cards_count,
+            subscriptions_count=subscriptions_count,
+            transactions_count=transactions_count
+        )
+    except Exception as e:
+        print(f"Error in profile_page: {str(e)}")
+        print(traceback.format_exc())
+        flash("An error occurred loading profile. Please try again.", "error")
+        return redirect(url_for("dashboard"))
 
+# -------------------- ERROR HANDLERS --------------------
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 Internal Server Errors with detailed logging."""
+    error_trace = traceback.format_exc()
+    print("=" * 50)
+    print("500 INTERNAL SERVER ERROR")
+    print("=" * 50)
+    print(error_trace)
+    print("=" * 50)
+    
+    # Return a simple error page
+    error_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>500 - Internal Server Error</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+            h1 {{ color: #e74c3c; }}
+        </style>
+    </head>
+    <body>
+        <h1>500 - Internal Server Error</h1>
+        <p>An error occurred while processing your request.</p>
+        <p><a href="/dashboard">Return to Dashboard</a></p>
+    </body>
+    </html>
+    """
+    return error_html, 500
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 Not Found errors."""
+    error_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>404 - Not Found</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #3498db; }
+        </style>
+    </head>
+    <body>
+        <h1>404 - Page Not Found</h1>
+        <p>The page you're looking for doesn't exist.</p>
+        <p><a href="/dashboard">Return to Dashboard</a></p>
+    </body>
+    </html>
+    """
+    return error_html, 404
 
 # -------------------- RUN --------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    # For production, set FLASK_DEBUG=False in .env file
+    # Default to False for production safety
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+    port = int(os.getenv("PORT", 5000))
+    app.run(debug=debug_mode, host="0.0.0.0", port=port)
     

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Expenzo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-styles.css') }}">
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
@@ -80,13 +81,13 @@
           <div class="card-header">
             <h3>Total Balance</h3>
           </div>
-          <div class="balance-amount">₹{{ "%.2f"|format(balance) }}</div>
-            {% if total_income > 0 %}
-            {% set earnings_pct = ((total_income - total_expense) / total_income * 100) if total_income > 0 else 0 %}
+          <div class="balance-amount">₹{{ "%.2f"|format(balance|default(0)) }}</div>
+            {% if total_income and total_income > 0 %}
+            {% set earnings_pct = ((total_income - total_expense) / total_income * 100) if total_income and total_income > 0 else 0 %}
             <div class="balance-trend">
               <span class="trend-positive">
                 <i class='bx bx-trending-up'></i>
-                Earnings +{{ "%.2f"|format(earnings_pct) }}%
+                Earnings +{{ "%.2f"|format(earnings_pct|default(0)) }}%
               </span>
             </div>
             {% endif %}
@@ -105,16 +106,18 @@
             <canvas id="spendingChart"></canvas>
           </div>
           <div class="spending-legend">
-            {% for category, amount in category_spending.items() %}
-            {% set colors = ['#4A90E2', '#7B68EE', '#FF6B9D', '#95A5A6', '#F39C12', '#E74C3C'] %}
-            {% set color_index = loop.index0 % colors|length %}
-            <div class="legend-item">
-              <span class="legend-dot" data-color="{{ colors[color_index] }}"></span>
-              <span>{{ category }} (₹{{ "%.2f"|format(amount) }})</span>
-            </div>
+            {% if category_spending %}
+              {% for category, amount in category_spending.items() %}
+              {% set colors = ['#4A90E2', '#7B68EE', '#FF6B9D', '#95A5A6', '#F39C12', '#E74C3C'] %}
+              {% set color_index = loop.index0 % colors|length %}
+              <div class="legend-item">
+                <span class="legend-dot" data-color="{{ colors[color_index] }}"></span>
+                <span>{{ category }} (₹{{ "%.2f"|format(amount) }})</span>
+              </div>
+              {% endfor %}
             {% else %}
             <p>No spending data</p>
-            {% endfor %}
+            {% endif %}
           </div>
         </div>
 
@@ -125,15 +128,17 @@
             <a href="{{ url_for('cards_page') }}" class="view-all-link">View All</a>
           </div>
           <div class="cards-preview">
-            {% for card in cards[:2] %}
-            <div class="preview-card-item">
-              <div class="card-brand">{{ card.get('brand', 'Card') }}</div>
-              <div class="card-number">{{ card.get('masked_number', '**** **** **** ' + card.get('last4', '----')) }}</div>
-              <div class="card-holder">{{ card.get('cardholder', 'Card Holder') }}</div>
-            </div>
+            {% if cards %}
+              {% for card in cards[:2] %}
+              <div class="preview-card-item">
+                <div class="card-brand">{{ card.get('brand', 'Card') }}</div>
+                <div class="card-number">{{ card.get('masked_number', '**** **** **** ' + card.get('last4', '----')) }}</div>
+                <div class="card-holder">{{ card.get('cardholder', 'Card Holder') }}</div>
+              </div>
+              {% endfor %}
             {% else %}
             <p class="empty-state">No cards added</p>
-            {% endfor %}
+            {% endif %}
           </div>
           <a href="{{ url_for('cards_page') }}" class="card-action-btn">Manage Cards</a>
         </div>
@@ -150,9 +155,14 @@
           <div class="budget-chart">
             <canvas id="budgetChart"></canvas>
           </div>
-          {% if user_limit %}
+          {% if user_limit and user_limit.get('limit') %}
           <div class="budget-info">
             <span>Limit: ₹{{ "%.2f"|format(user_limit.get('limit', 0)) }}</span>
+            <span>Spent: ₹{{ "%.2f"|format(total_expense) }}</span>
+          </div>
+          {% else %}
+          <div class="budget-info">
+            <span>No limit set</span>
             <span>Spent: ₹{{ "%.2f"|format(total_expense) }}</span>
           </div>
           {% endif %}
@@ -170,26 +180,28 @@
             <button class="filter-btn" data-filter="expense">Spending</button>
           </div>
           <div class="transactions-list">
-            {% for tx in recent_transactions[:5] %}
-            <div class="transaction-item" data-type="{{ tx.get('type', '') }}">
-              <div class="transaction-icon">
-                {% if tx.get('type') == 'income' %}
-                <i class='bx bx-trending-up'></i>
-                {% else %}
-                <i class='bx bx-trending-down'></i>
-                {% endif %}
+            {% if recent_transactions %}
+              {% for tx in recent_transactions[:5] %}
+              <div class="transaction-item" data-type="{{ tx.get('type', '') }}">
+                <div class="transaction-icon">
+                  {% if tx.get('type') == 'income' %}
+                  <i class='bx bx-trending-up'></i>
+                  {% else %}
+                  <i class='bx bx-trending-down'></i>
+                  {% endif %}
+                </div>
+                <div class="transaction-details">
+                  <div class="transaction-title">{{ tx.get('category') or tx.get('source') or tx.get('payee') or 'Transaction' }}</div>
+                  <div class="transaction-date">{{ tx.get('date', '')[:10] if tx.get('date') else 'N/A' }}</div>
+                </div>
+                <div class="transaction-amount {% if tx.get('type') == 'expense' %}negative{% else %}positive{% endif %}">
+                  {% if tx.get('type') == 'expense' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(tx.get('amount', 0)) }}
+                </div>
               </div>
-              <div class="transaction-details">
-                <div class="transaction-title">{{ tx.get('category') or tx.get('source') or tx.get('payee') or 'Transaction' }}</div>
-                <div class="transaction-date">{{ tx.get('date', '')[:10] if tx.get('date') else 'N/A' }}</div>
-              </div>
-              <div class="transaction-amount {% if tx.get('type') == 'expense' %}negative{% else %}positive{% endif %}">
-                {% if tx.get('type') == 'expense' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(tx.get('amount', 0)) }}
-              </div>
-            </div>
+              {% endfor %}
             {% else %}
             <p class="empty-state">No transactions yet</p>
-            {% endfor %}
+            {% endif %}
           </div>
         </div>
 
@@ -200,15 +212,17 @@
             <a href="{{ url_for('subscriptions_page') }}" class="view-all-link">View All</a>
           </div>
           <div class="subscriptions-list">
-            {% for sub in subscriptions[:4] %}
-            <div class="subscription-item">
-              <div class="subscription-name">{{ sub.get('name', 'Subscription') }}</div>
-              <div class="subscription-amount">₹{{ "%.2f"|format(sub.get('amount', 0)) }}</div>
-              <div class="subscription-date">Next: {{ sub.get('next_payment_date', 'N/A') }}</div>
-            </div>
+            {% if subscriptions %}
+              {% for sub in subscriptions[:4] %}
+              <div class="subscription-item">
+                <div class="subscription-name">{{ sub.get('name', 'Subscription') }}</div>
+                <div class="subscription-amount">₹{{ "%.2f"|format(sub.get('amount', 0)) }}</div>
+                <div class="subscription-date">Next: {{ sub.get('next_payment_date', 'N/A') }}</div>
+              </div>
+              {% endfor %}
             {% else %}
             <p class="empty-state">No active subscriptions</p>
-            {% endfor %}
+            {% endif %}
           </div>
           <a href="{{ url_for('subscriptions_page') }}" class="card-action-btn">Manage Subscriptions</a>
         </div>
@@ -221,7 +235,7 @@
           <div class="overview-stats">
             <div class="stat-item">
               <span class="stat-label">Transactions</span>
-              <span class="stat-value">{{ recent_transactions|length }}+</span>
+              <span class="stat-value">{{ (recent_transactions|default([]))|length }}+</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Success Rate</span>
@@ -245,8 +259,8 @@
       "totalIncome": {{ total_income|default(0) }},
       "totalExpense": {{ total_expense|default(0) }},
       "balance": {{ balance|default(0) }},
-      "categorySpending": {{ category_spending|tojson|safe }},
-      "recentTransactions": {{ recent_transactions|tojson|safe }}
+      "categorySpending": {{ (category_spending|default({}))|tojson|safe }},
+      "recentTransactions": {{ (recent_transactions|default([]))|tojson|safe }}
     }
   </script>
   <script>
