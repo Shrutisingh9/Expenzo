@@ -83,7 +83,7 @@
           </div>
           <div class="summary-info">
             <div class="summary-label">Net Balance</div>
-            <div class="summary-value {% if net_balance < 0 %}negative{% else %}positive{% endif %}" id="netBalance">₹{{ "%.2f"|format(net_balance) if net_balance else "0.00" }}</div>
+            <div class="summary-value {% if net_balance < 0 %}negative{% else %}positive{% endif %}" id="netBalance">₹{{ "%.2f"|format(net_balance) if net_balance is defined else "0.00" }}</div>
           </div>
         </div>
         <div class="summary-card">

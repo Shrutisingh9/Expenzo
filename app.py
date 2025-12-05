@@ -26,7 +26,28 @@ MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI not found in environment (.env)")
 
-client = MongoClient(MONGO_URI)
+# Clean MONGO_URI - remove any extra whitespace or quotes
+MONGO_URI = MONGO_URI.strip().strip('"').strip("'")
+
+# Validate and connect to MongoDB
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # Test connection
+    client.admin.command('ping')
+    print("✅ MongoDB connection successful")
+except Exception as e:
+    error_msg = f"MongoDB connection failed: {str(e)}"
+    print("=" * 50)
+    print("MONGODB CONNECTION ERROR")
+    print("=" * 50)
+    print(error_msg)
+    print(f"MONGO_URI format check:")
+    print(f"- Should start with: mongodb:// or mongodb+srv://")
+    print(f"- Should not have spaces")
+    print(f"- Should have proper format: mongodb+srv://user:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority")
+    print("=" * 50)
+    raise RuntimeError(error_msg)
+
 db = client.get_database(os.getenv("DB_NAME", "expen"))
 
 # collections
@@ -667,9 +688,27 @@ def transactions_page():
         except Exception as e:
             print(f"Error converting ObjectIds in transactions_page: {str(e)}")
         
+        # Calculate totals
+        try:
+            total_income = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "income")
+            total_expense = sum(float(t.get("amount", 0)) for t in txs if t.get("type") == "expense")
+            net_balance = total_income - total_expense
+            print(f"Calculated totals - Income: {total_income}, Expense: {total_expense}, Balance: {net_balance}")
+        except Exception as e:
+            print(f"Error calculating totals in transactions_page: {str(e)}")
+            total_income = 0.0
+            total_expense = 0.0
+            net_balance = 0.0
+        
         print("Rendering transactions.html template...")
         try:
-            result = render_template("transactions.html", transactions=txs if txs else [])
+            result = render_template(
+                "transactions.html",
+                transactions=txs if txs else [],
+                total_income=total_income,
+                total_expense=total_expense,
+                net_balance=net_balance
+            )
             print("Template rendered successfully")
             return result
         except Exception as template_error:
@@ -769,6 +808,23 @@ def limits_page():
         try:
             limit = limits_col.find_one({"user_id": user_id})
             print(f"Limit found: {limit}")
+            
+            # Convert ObjectId to string for JSON serialization and ensure proper structure
+            if limit:
+                if "_id" in limit:
+                    limit["_id"] = str(limit["_id"])
+                if "user_id" in limit:
+                    limit["user_id"] = str(limit["user_id"])
+                # Ensure limit and period fields exist with defaults
+                if "limit" not in limit:
+                    limit["limit"] = 0.0
+                if "period" not in limit:
+                    limit["period"] = "monthly"
+                # Convert limit to float if it's not already
+                try:
+                    limit["limit"] = float(limit["limit"])
+                except (ValueError, TypeError):
+                    limit["limit"] = 0.0
         except Exception as e:
             print(f"Database error in limits_page: {str(e)}")
             print(traceback.format_exc())

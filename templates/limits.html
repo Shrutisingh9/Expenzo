@@ -15,14 +15,14 @@
             <div class="form-group">
               <label>Limit Amount (₹)</label>
               <input type="number" name="limit" step="0.01" placeholder="0.00" min="0" 
-                     value="{{ limit.limit if limit else '' }}" required>
+                     value="{{ limit.limit if limit and limit.get('limit') else '' }}" required>
             </div>
             <div class="form-group">
               <label>Period</label>
               <select name="period" required>
-                <option value="monthly" {% if limit and limit.period == 'monthly' %}selected{% endif %}>Monthly</option>
-                <option value="weekly" {% if limit and limit.period == 'weekly' %}selected{% endif %}>Weekly</option>
-                <option value="daily" {% if limit and limit.period == 'daily' %}selected{% endif %}>Daily</option>
+                <option value="monthly" {% if limit and limit.get('period') == 'monthly' %}selected{% endif %}>Monthly</option>
+                <option value="weekly" {% if limit and limit.get('period') == 'weekly' %}selected{% endif %}>Weekly</option>
+                <option value="daily" {% if limit and limit.get('period') == 'daily' %}selected{% endif %}>Daily</option>
               </select>
             </div>
             <div class="form-actions">
@@ -36,15 +36,15 @@
       </div>
 
       <!-- Limit Status -->
-      {% if limit %}
+      {% if limit and limit.get('limit') %}
       <div class="limit-status-container">
         <div class="limit-status-card">
           <div class="limit-header">
             <h3>Current Limit</h3>
-            <span class="limit-period-badge">{{ limit.period.title() }}</span>
+            <span class="limit-period-badge">{{ limit.get('period', 'monthly').title() }}</span>
           </div>
           <div class="limit-amount-display">
-            ₹{{ "%.2f"|format(limit.limit) }}
+            ₹{{ "%.2f"|format(limit.get('limit', 0)) }}
           </div>
           <div class="limit-progress">
             <div class="progress-bar">
@@ -53,7 +53,7 @@
             <div class="progress-info">
               <span id="spentAmount">₹0.00</span>
               <span>of</span>
-              <span>₹{{ "%.2f"|format(limit.limit) }}</span>
+              <span>₹{{ "%.2f"|format(limit.get('limit', 0)) }}</span>
             </div>
           </div>
           <div class="limit-warning" id="limitWarning" style="display: none;">
@@ -107,6 +107,6 @@
 
 {% block extra_js %}
   <script>
-    window.limitData = {% if limit %}{{ limit|tojson }}{% else %}null{% endif %};
+    window.limitData = {% if limit and limit.get('limit') %}{{ limit|tojson }}{% else %}null{% endif %};
   </script>
 {% endblock %}
